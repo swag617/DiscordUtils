@@ -1,0 +1,38 @@
+name: DiscordUtils
+version: 1.0-SNAPSHOT
+main: com.swag.discordutils.DiscordUtils
+api-version: 1.20
+description: Standalone Discord bot plugin - bridges Minecraft chat with Discord via JDA.
+
+softdepend:
+  - Vault
+  - CMI
+  - zAuctionHouse
+  - AuctionHouse
+  - AH
+  # Add Essentials here if you switch to EssentialsX for AFK support
+
+commands:
+  discordchat:
+    description: Toggle who can chat from Discord to Minecraft.
+    usage: /discordchat <allow|deny> <all|admins>
+    permission: discordutils.admin
+  discordlink:
+    description: Link your Minecraft account to your Discord account.
+    usage: /discordlink
+    permission: discordutils.link
+  discordunlink:
+    description: Unlink your Minecraft account from Discord.
+    usage: /discordunlink
+    permission: discordutils.link
+
+permissions:
+  discordutils.admin:
+    description: Allows use of /discordchat command.
+    default: op
+  discordutils.link:
+    description: Allows use of /discordlink command.
+    default: true
+  discordutils.formatting:
+    description: Allows use of MiniMessage/hex formatting in chat.
+    default: true
