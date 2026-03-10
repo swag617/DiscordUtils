@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DiscordUtils</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:            #1a1a1a;
+    --bg-card:       #1e1e1e;
+    --bg-sidebar:    #212121;
+    --bg-active:     #0e1120;
+    --border:        #2a2a2a;
+    --border-dim:    #333;
+    --border-accent: #5865F2;
+    --purple:        #5865F2;
+    --blue:          #7289da;
+    --purple-muted:  #9b8ec4;
+    --purple-light:  #c0b3d8;
+    --text:          #e0e0e0;
+    --text-muted:    #999;
+    --text-dim:      #666;
+    --grad:          linear-gradient(135deg, #7289da 0%, #5865F2 100%);
+    --font:          'Inter', sans-serif;
+    --mono:          'JetBrains Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--purple); border-radius: 3px; }
+
+  .page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 20px 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .section-label {
+    display: flex; align-items: center; gap: 12px; margin-top: 10px;
+  }
+  .section-label span {
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--blue); white-space: nowrap; opacity: 0.8;
+  }
+  .section-label::after {
+    content: ''; flex: 1; height: 1px; background: var(--border-dim);
+  }
+
+  /* HERO */
+  .hero {
+    position: relative; height: 280px; border-radius: 12px;
+    overflow: hidden; border: 1px solid rgba(88,101,242,0.35);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .hero-bg {
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, #070a1a, #1a1f4e, #7289da, #5865F2);
+    background-size: 300% 300%;
+    animation: gradientShift 8s ease infinite;
+  }
+  @keyframes gradientShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .hero-overlay {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 75% 75% at 50% 50%, transparent 40%, rgba(7,10,26,0.5) 100%);
+  }
+  .hero-content {
+    position: relative; z-index: 1; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+  .hero-label {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    letter-spacing: 4px; text-transform: uppercase; color: rgba(255,255,255,0.55);
+  }
+  .hero-title {
+    font-size: clamp(56px, 8vw, 84px); font-weight: 800;
+    letter-spacing: -2px; line-height: 1; color: #fff;
+    text-shadow: 0 2px 30px rgba(88,101,242,0.45);
+  }
+  .hero-sub {
+    font-size: 14px; color: rgba(255,255,255,0.6); font-weight: 400;
+    max-width: 420px; line-height: 1.55;
+  }
+  .hero-pills { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .hero-pill {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 20px; padding: 4px 13px;
+    font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.8);
+  }
+
+  /* CARDS */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+  .card {
+    background: var(--bg-active); border: 1px solid var(--border-accent);
+    border-radius: 10px; padding: 24px 20px;
+    position: relative; overflow: hidden; transition: border-color 0.2s;
+  }
+  .card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 2px; background: var(--grad); opacity: 0.7;
+  }
+  a.card-link { text-decoration: none; color: inherit; display: block; height: 100%; }
+  a.card-link .card { height: 100%; transition: border-color 0.2s, transform 0.15s; box-sizing: border-box; }
+  a.card-link:hover .card { border-color: var(--blue); transform: translateY(-2px); }
+
+  .card-icon { font-size: 28px; margin-bottom: 12px; display: block; line-height: 1; }
+  .card-title { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 7px; }
+  .card-desc { font-size: 12.5px; line-height: 1.65; color: var(--purple-muted); }
+  .card-desc strong { color: var(--text); font-weight: 600; }
+
+  /* FOOTER BAR */
+  .footer-bar {
+    background: var(--bg-sidebar); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px; margin-top: 6px;
+  }
+  .footer-left { display: flex; flex-direction: column; gap: 9px; }
+  .compat-label {
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 3px; text-transform: uppercase; color: var(--blue); opacity: 0.7;
+  }
+  .ver-chips { display: flex; gap: 7px; flex-wrap: wrap; }
+  .ver-chip {
+    padding: 3px 12px; border-radius: 20px;
+    background: rgba(88,101,242,0.08); border: 1px solid rgba(88,101,242,0.25);
+    font-size: 11px; font-weight: 500; color: var(--purple-light); font-family: var(--mono);
+  }
+  .footer-right { display: flex; gap: 16px; align-items: center; }
+  .dl-btn {
+    padding: 8px 20px;
+    background: linear-gradient(135deg, rgba(114,137,218,0.12), rgba(88,101,242,0.12));
+    border: 1px solid rgba(88,101,242,0.4); border-radius: 8px;
+    color: var(--purple-light); font-family: var(--font);
+    font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none;
+    transition: all 0.18s; display: inline-block;
+  }
+  .dl-btn:hover {
+    background: linear-gradient(135deg, rgba(114,137,218,0.2), rgba(88,101,242,0.2));
+    border-color: var(--purple); color: #fff; transform: translateY(-1px);
+  }
+
+  .hint {
+    text-align: center; font-family: var(--mono); font-size: 10px;
+    letter-spacing: 2px; color: #2e2e2e; text-transform: uppercase; padding-top: 8px;
+  }
+  .hint a {
+    color: var(--purple); text-decoration: none;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <div class="hero-label">Minecraft Plugin &nbsp;·&nbsp; Paper 1.20+</div>
+      <div class="hero-title">DiscordUtils</div>
+      <div class="hero-sub">Bridge your Minecraft server and Discord with chat sync, account linking, item previews, and auction logging.</div>
+      <div class="hero-pills">
+        <span class="hero-pill">Paper 1.20+</span>
+        <span class="hero-pill">Java 21</span>
+        <span class="hero-pill">JDA</span>
+        <span class="hero-pill">LuckPerms</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="section-label"><span>Features</span></div>
+  <div class="grid-2">
+    <a class="card-link" href="./index.html#/chat-bridge">
+      <div class="card">
+        <span class="card-icon">💬</span>
+        <div class="card-title">Chat Bridge</div>
+        <div class="card-desc">Minecraft chat relayed to Discord; Discord messages broadcast in-game. Supports <strong>MiniMessage, hex colors, role display,</strong> and Discord markdown conversion.</div>
+      </div>
+    </a>
+    <a class="card-link" href="./index.html#/account-linking">
+      <div class="card">
+        <span class="card-icon">🔗</span>
+        <div class="card-title">Account Linking</div>
+        <div class="card-desc">Players link their Minecraft account to Discord via <strong>OAuth2</strong>. LuckPerms rank automatically synced as a Discord role on every join.</div>
+      </div>
+    </a>
+    <a class="card-link" href="./index.html#/chat-bridge">
+      <div class="card">
+        <span class="card-icon">🖼️</span>
+        <div class="card-title">Item Display</div>
+        <div class="card-desc">Typing <strong>[item]</strong> in chat renders a tooltip image of the held item and attaches it to the Discord message as an embed.</div>
+      </div>
+    </a>
+    <a class="card-link" href="./index.html#/auction-house">
+      <div class="card">
+        <span class="card-icon">🏷️</span>
+        <div class="card-title">Auction House Logging</div>
+        <div class="card-desc">New listings, sales, and removals from <strong>zAuctionHouse</strong> posted to a Discord channel as rich embeds with item info and pricing.</div>
+      </div>
+    </a>
+  </div>
+
+  <!-- MORE FEATURES -->
+  <div class="section-label"><span>More</span></div>
+  <div class="grid-3">
+    <a class="card-link" href="./index.html#/setup">
+      <div class="card">
+        <span class="card-icon">🤖</span>
+        <div class="card-title">Join / Leave Embeds</div>
+        <div class="card-desc">Player join and leave events posted to Discord with their <strong>Minecraft avatar</strong>.</div>
+      </div>
+    </a>
+    <a class="card-link" href="./index.html#/setup">
+      <div class="card">
+        <span class="card-icon">💤</span>
+        <div class="card-title">AFK Detection</div>
+        <div class="card-desc">Works with <strong>CMI</strong> or any plugin that broadcasts AFK status messages to the server.</div>
+      </div>
+    </a>
+    <a class="card-link" href="./index.html#/setup">
+      <div class="card">
+        <span class="card-icon">📡</span>
+        <div class="card-title">Server Message Relay</div>
+        <div class="card-desc">Forward plugin broadcasts like mini-game events to Discord by <strong>prefix filter</strong>.</div>
+      </div>
+    </a>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer-bar">
+    <div class="footer-left">
+      <div class="compat-label">Compatibility</div>
+      <div class="ver-chips">
+        <span class="ver-chip">Paper 1.20+</span>
+        <span class="ver-chip">Spigot 1.20+</span>
+        <span class="ver-chip">Java 21</span>
+        <span class="ver-chip">Vault + LuckPerms</span>
+      </div>
+    </div>
+    <div class="footer-right">
+      <a href="https://github.com/swag617/DiscordUtils/releases" target="_blank" class="dl-btn">Download on GitHub</a>
+    </div>
+  </div>
+
+  <div class="hint">
+    <a href="./index.html#/setup">→ getting started</a>
+    &nbsp;·&nbsp;
+    <a href="./index.html#/permissions">permissions</a>
+  </div>
+
+</div>
+</body>
+</html>

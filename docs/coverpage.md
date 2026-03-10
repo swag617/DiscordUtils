@@ -2,5 +2,5 @@
 
 > A standalone Spigot/Paper plugin that bridges Minecraft and Discord using JDA.
 
-[Get Started](#/)
+[Get Started](banner.html)
 [GitHub](https://github.com/swag617/DiscordUtils)
