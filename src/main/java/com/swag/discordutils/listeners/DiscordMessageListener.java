@@ -12,8 +12,18 @@ import org.bukkit.Bukkit;
 
 import java.util.List;
 
+<<<<<<< HEAD
 // NOTE: requires "Message Content Intent" enabled in the Discord Developer Portal,
 // otherwise getContentDisplay() returns empty for all non-bot messages.
+=======
+/**
+ * Receives Discord messages via JDA and relays them to Minecraft chat.
+ *
+ * PREREQUISITE: The bot must have the "Message Content Intent" (Privileged Gateway Intent)
+ * enabled in the Discord Developer Portal. Without it, getContentDisplay() always returns
+ * empty for non-bot messages.
+ */
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
 public class DiscordMessageListener extends ListenerAdapter {
 
     private final DiscordUtils plugin;
@@ -26,6 +36,10 @@ public class DiscordMessageListener extends ListenerAdapter {
     public void onMessageReceived(MessageReceivedEvent event) {
         if (event.getAuthor().isBot()) return;
 
+<<<<<<< HEAD
+=======
+        // Handle DM link codes - player DMs the code to the bot
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         if (event.isFromType(ChannelType.PRIVATE)) {
             String content = event.getMessage().getContentDisplay().trim().toUpperCase();
             LinkManager lm = plugin.getLinkManager();
@@ -40,8 +54,15 @@ public class DiscordMessageListener extends ListenerAdapter {
             return; // never relay DMs to Minecraft chat
         }
 
+<<<<<<< HEAD
         if (!event.isFromGuild()) return;
 
+=======
+        // Only handle guild (server) text channel messages
+        if (!event.isFromGuild()) return;
+
+        // Only handle the configured channel
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         String channelId = plugin.getConfig().getString("channel-id", "");
         if (!event.getChannel().getId().equals(channelId)) return;
 
@@ -53,8 +74,14 @@ public class DiscordMessageListener extends ListenerAdapter {
             if (member == null || !hasAdminRole(member)) return;
         }
 
+<<<<<<< HEAD
         String rawContent = event.getMessage().getContentDisplay();
         if (rawContent.isEmpty()) return;
+=======
+        // getContentDisplay() resolves @mentions to names instead of raw IDs
+        String rawContent = event.getMessage().getContentDisplay();
+        if (rawContent.isEmpty()) return; // MESSAGE_CONTENT intent not enabled or empty message
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
 
         if (plugin.getConfig().getBoolean("discord-chat.convert-discord-markdown", true)) {
             rawContent = FormattingUtil.discordToMinecraft(rawContent);
@@ -68,9 +95,17 @@ public class DiscordMessageListener extends ListenerAdapter {
                 .replace("{role}", role)
                 .replace("{message}", rawContent);
 
+<<<<<<< HEAD
         message = FormattingUtil.parseMiniMessage(message);
 
         final String finalMessage = message;
+=======
+        // Parse & codes / MiniMessage in the format string
+        message = FormattingUtil.parseMiniMessage(message);
+
+        final String finalMessage = message;
+        // JDA fires on its own thread pool - dispatch broadcast to the main thread
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         Bukkit.getScheduler().runTask(plugin, () -> Bukkit.broadcastMessage(finalMessage));
     }
 
@@ -91,10 +126,22 @@ public class DiscordMessageListener extends ListenerAdapter {
         return fallback;
     }
 
+<<<<<<< HEAD
     // Two passes: exact match wins over fuzzy so "Flea" never accidentally matches "Fleabot".
     private String getHighestRole(Member member) {
         if (member == null) return "Member";
         List<String> displayRoles = plugin.getConfig().getStringList("discord-chat.display-roles");
+=======
+    /**
+     * Returns the name of the member's highest-positioned role that appears in the
+     * discord-chat.display-roles config list. Falls back to "Member" if none match.
+     * JDA returns roles sorted highest position first, so the first match is the top rank.
+     */
+    private String getHighestRole(Member member) {
+        if (member == null) return "Member";
+        List<String> displayRoles = plugin.getConfig().getStringList("discord-chat.display-roles");
+        // Two passes: exact match wins over fuzzy so "Flea" never accidentally matches "Fleabot"
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         for (Role role : member.getRoles()) {
             for (String name : displayRoles) {
                 if (role.getName().equalsIgnoreCase(name)) return role.getName();
@@ -108,6 +155,14 @@ public class DiscordMessageListener extends ListenerAdapter {
         return "Member";
     }
 
+<<<<<<< HEAD
+=======
+    /**
+     * Matches a config role name against an actual Discord role name.
+     * "Mod" matches "Moderator", "Admin" matches "Administrator", etc.
+     * Either name just needs to start with the other (case-insensitive).
+     */
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
     private boolean rolesMatch(String configName, String discordName) {
         String a = configName.toLowerCase();
         String b = discordName.toLowerCase();

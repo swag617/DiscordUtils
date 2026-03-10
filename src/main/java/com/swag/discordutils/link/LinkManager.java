@@ -44,7 +44,15 @@ public class LinkManager {
         this.httpClient = HttpClient.newHttpClient();
     }
 
+<<<<<<< HEAD
     public LinkStart startLink(UUID playerUuid) {
+=======
+    /**
+     * Starts the link process for a player. Returns the code and OAuth2 URL to send in chat.
+     */
+    public LinkStart startLink(UUID playerUuid) {
+        // Remove any existing pending code for this player
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         pending.entrySet().removeIf(e -> e.getValue().playerUuid().equals(playerUuid));
 
         String code = generateCode();
@@ -65,6 +73,12 @@ public class LinkManager {
         return new LinkStart(code, oauthUrl);
     }
 
+<<<<<<< HEAD
+=======
+    /**
+     * Called by the HTTP server when Discord redirects back with an auth code.
+     */
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
     public boolean completeLinkOAuth2(String state, String authCode) {
         plugin.getLogger().info("[Link] OAuth2 callback received. state=" + state);
         PendingLink link = pending.remove(state);
@@ -106,6 +120,12 @@ public class LinkManager {
         }
     }
 
+<<<<<<< HEAD
+=======
+    /**
+     * Called when a Discord user DMs the bot a link code.
+     */
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
     public boolean completeLinkDM(String discordUserId, String code) {
         String upper = code.toUpperCase().trim();
         plugin.getLogger().info("[Link] DM code attempt. code=" + upper + " pendingKeys=" + pending.keySet());
@@ -136,6 +156,13 @@ public class LinkManager {
         }
     }
 
+<<<<<<< HEAD
+=======
+    /**
+     * Syncs the player's Discord role to match their current LuckPerms group.
+     * Should be called asynchronously (e.g. from PlayerJoinEvent).
+     */
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
     public void syncRoleAsync(Player player) {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
@@ -148,6 +175,13 @@ public class LinkManager {
         });
     }
 
+<<<<<<< HEAD
+=======
+    /**
+     * Unlinks a player, removing their rank roles from Discord and deleting the DB record.
+     * Returns false if the player was not linked.
+     */
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
     public boolean unlink(UUID uuid) {
         try {
             String discordId = db.getDiscordId(uuid);
@@ -212,7 +246,12 @@ public class LinkManager {
         String group = getPlayerGroup(playerUuid);
         if (group == null) return;
 
+<<<<<<< HEAD
         // Exact match first, fuzzy fallback — prevents "Flea" from matching "Fleabot".
+=======
+        // Exact match first, fuzzy fallback so "Mod" still finds "Moderator"
+        // but "Flea" never accidentally matches "Fleabot".
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         Role targetRole = guild.getRoles().stream()
                 .filter(r -> r.getName().equalsIgnoreCase(group))
                 .findFirst()
@@ -226,6 +265,11 @@ public class LinkManager {
             return;
         }
 
+<<<<<<< HEAD
+=======
+        // All configured rank roles — used to remove old rank before adding new one.
+        // Use exact matching here so only explicitly listed roles are ever touched.
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         List<String> rankNames = plugin.getConfig().getStringList("link.rank-role-names");
         List<Role> allRankRoles = guild.getRoles().stream()
                 .filter(r -> rankNames.stream().anyMatch(n -> n.equalsIgnoreCase(r.getName())))
@@ -252,6 +296,10 @@ public class LinkManager {
             return chat.getPrimaryGroup(online);
         }
 
+<<<<<<< HEAD
+=======
+        // Offline player fallback
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         OfflinePlayer offline = Bukkit.getOfflinePlayer(playerUuid);
         try {
             return chat.getPrimaryGroup(null, offline);
@@ -321,8 +369,14 @@ public class LinkManager {
         start += search.length();
         // skip optional whitespace and the colon
         while (start < json.length() && (json.charAt(start) == ' ' || json.charAt(start) == ':')) start++;
+<<<<<<< HEAD
         if (start >= json.length() || json.charAt(start) != '"') return null;
         start++;
+=======
+        // now we expect an opening quote
+        if (start >= json.length() || json.charAt(start) != '"') return null;
+        start++; // skip opening quote
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         int end = json.indexOf('"', start);
         return end < 0 ? null : json.substring(start, end);
     }

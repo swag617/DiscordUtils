@@ -41,6 +41,10 @@ public class DiscordLinkCommand implements CommandExecutor {
 
         LinkManager.LinkStart start = lm.startLink(player.getUniqueId());
 
+<<<<<<< HEAD
+=======
+        // Line 1: clickable link
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         TextComponent header = new TextComponent(ChatColor.GRAY + "[" + ChatColor.AQUA + "Discord Link" + ChatColor.GRAY + "] ");
         TextComponent clickLink = new TextComponent(ChatColor.GREEN + "" + ChatColor.BOLD + "Click here to link your Discord account");
         clickLink.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, start.oauthUrl()));
@@ -48,6 +52,10 @@ public class DiscordLinkCommand implements CommandExecutor {
                 new ComponentBuilder(ChatColor.GRAY + "Opens the Discord authorization page in your browser").create()));
         player.spigot().sendMessage(header, clickLink);
 
+<<<<<<< HEAD
+=======
+        // Line 2: backup DM code
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         player.sendMessage(ChatColor.GRAY + "Can't click? DM the bot this code: " + ChatColor.YELLOW + "" + ChatColor.BOLD + start.code());
         player.sendMessage(ChatColor.DARK_GRAY + "This code expires in 10 minutes.");
 

@@ -53,13 +53,25 @@ public class AuctionBadgeRenderer {
         BufferedImage img = new BufferedImage(SIZE, SIZE, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = setup(img.createGraphics());
 
+<<<<<<< HEAD
+=======
+        // Transparent background
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         g.setComposite(AlphaComposite.Clear);
         g.fillRect(0, 0, SIZE, SIZE);
         g.setComposite(AlphaComposite.SrcOver);
 
+<<<<<<< HEAD
         g.setColor(new Color(0x2B, 0x2D, 0x31));
         g.fill(new RoundRectangle2D.Float(0, 0, SIZE, SIZE, 36, 36));
 
+=======
+        // Discord-dark rounded square
+        g.setColor(new Color(0x2B, 0x2D, 0x31));
+        g.fill(new RoundRectangle2D.Float(0, 0, SIZE, SIZE, 36, 36));
+
+        // Gradient accent circle
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         g.setPaint(new GradientPaint(
                 SIZE / 2f - 60, SIZE / 2f - 60, accent,
                 SIZE / 2f + 60, SIZE / 2f + 60, accent.darker()
@@ -126,12 +138,20 @@ public class AuctionBadgeRenderer {
         int cx = SIZE / 2, cy = SIZE / 2;
         g.setColor(Color.WHITE);
 
+<<<<<<< HEAD
+=======
+        // Triangle outline
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         g.setStroke(new BasicStroke(12f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         g.drawPolygon(
                 new int[]{cx,      cx - 40, cx + 40},
                 new int[]{cy - 36, cy + 28, cy + 28},
                 3);
 
+<<<<<<< HEAD
+=======
+        // Exclamation bar + dot (filled, so no stroke effect)
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         g.fillRoundRect(cx - 5, cy - 15, 10, 22, 4, 4);
         g.fillOval(cx - 5, cy + 13, 10, 10);
 

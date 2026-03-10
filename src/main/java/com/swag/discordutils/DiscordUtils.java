@@ -36,9 +36,17 @@ public class DiscordUtils extends JavaPlugin {
 
         discordBot = new DiscordBot(this);
 
+<<<<<<< HEAD
         DiscordMessageListener discordMessageListener = new DiscordMessageListener(this);
         discordBot.connect(discordMessageListener);
 
+=======
+        // Register the JDA listener before connecting so events aren't missed
+        DiscordMessageListener discordMessageListener = new DiscordMessageListener(this);
+        discordBot.connect(discordMessageListener);
+
+        // Bukkit listeners
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         getServer().getPluginManager().registerEvents(new MinecraftChatListener(this), this);
         getServer().getPluginManager().registerEvents(new ServerEventListener(this), this);
         setupAfkListener();

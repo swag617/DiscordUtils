@@ -2,7 +2,10 @@ package com.swag.discordutils.listeners;
 
 import com.swag.discordutils.DiscordUtils;
 import fr.maxlego08.zauctionhouse.api.AuctionItem;
+<<<<<<< HEAD
 import fr.maxlego08.zauctionhouse.api.enums.StorageType;
+=======
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
 import fr.maxlego08.zauctionhouse.api.event.events.AuctionAdminRemoveEvent;
 import fr.maxlego08.zauctionhouse.api.event.events.AuctionPostBuyEvent;
 import fr.maxlego08.zauctionhouse.api.event.events.AuctionRemoveEvent;
@@ -53,7 +56,12 @@ public class AuctionHouseListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onRemove(AuctionRemoveEvent event) {
         if (!plugin.getConfig().getBoolean("auction-house.enabled", true)) return;
+<<<<<<< HEAD
         if (event.getType() == StorageType.BUY) return;
+=======
+        // BUY type means the item was purchased — AuctionPostBuyEvent already handles that
+        if (event.getType() == fr.maxlego08.zauctionhouse.api.enums.StorageType.BUY) return;
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         AuctionItem item = event.getAuctionItem();
         plugin.getDiscordBot().sendAuctionEmbed(
                 AuctionAction.REMOVED,

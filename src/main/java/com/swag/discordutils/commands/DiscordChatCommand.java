@@ -18,6 +18,14 @@ public class DiscordChatCommand implements CommandExecutor, TabCompleter {
         this.plugin = plugin;
     }
 
+<<<<<<< HEAD
+=======
+    // /discordchat allow all      - everyone on Discord can chat to Minecraft
+    // /discordchat allow admins   - only Discord users with the admin role can chat
+    // /discordchat enable         - enable Discord->Minecraft relay
+    // /discordchat disable        - disable Discord->Minecraft relay
+    // /discordchat status         - show current settings
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("discordutils.admin")) {

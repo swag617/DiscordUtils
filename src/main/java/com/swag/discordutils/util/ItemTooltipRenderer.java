@@ -52,6 +52,10 @@ public class ItemTooltipRenderer {
         Font plain  = new Font(Font.MONOSPACED, Font.PLAIN,  9 * S);
         Font italic = plain.deriveFont(Font.ITALIC);
 
+<<<<<<< HEAD
+=======
+        // Measure text dimensions using a scratch image
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         BufferedImage scratch = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
         Graphics2D sg = scratch.createGraphics();
         sg.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
@@ -65,9 +69,17 @@ public class ItemTooltipRenderer {
             if (w > maxText) maxText = w;
         }
 
+<<<<<<< HEAD
         int innerW = maxText + PAD * 2;
         int innerH = calcHeight(lines);
 
+=======
+        // Inner dimensions (inside the 2px border on each side)
+        int innerW = maxText + PAD * 2;
+        int innerH = calcHeight(lines);
+
+        // Total image = inner + 2px outer border + 2px inner border on each side
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         int imgW = innerW + 4;
         int imgH = innerH + 4;
 
@@ -92,6 +104,10 @@ public class ItemTooltipRenderer {
             g.drawLine(1, y, 1, y);
             g.drawLine(imgW - 2, y, imgW - 2, y);
         }
+<<<<<<< HEAD
+=======
+        // Inner border top/bottom
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         g.setColor(BORDER_TOP);
         g.drawLine(1, 1, imgW - 2, 1);
         g.setColor(BORDER_BOT);
@@ -125,6 +141,10 @@ public class ItemTooltipRenderer {
         List<TooltipLine> lines = new ArrayList<>();
         ItemMeta meta = item.hasItemMeta() ? item.getItemMeta() : null;
 
+<<<<<<< HEAD
+=======
+        // --- Item name ---
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         boolean hasCustomName = meta != null && meta.hasDisplayName();
         String name;
         Color nameColor;
@@ -133,17 +153,29 @@ public class ItemTooltipRenderer {
             nameColor = C_NAMED;
         } else {
             name = formatName(item.getType().name());
+<<<<<<< HEAD
+=======
+            // White if unenchanted, yellow if enchanted (vanilla behaviour)
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
             nameColor = item.getEnchantments().isEmpty() ? C_NAME : C_NAMED;
         }
         if (item.getAmount() > 1) name = item.getAmount() + "x " + name;
         lines.add(new TooltipLine(name, nameColor, false));
 
+<<<<<<< HEAD
+=======
+        // --- Enchantments ---
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         Map<Enchantment, Integer> enchants = item.getEnchantments();
         for (Map.Entry<Enchantment, Integer> e : enchants.entrySet()) {
             String eName = formatName(e.getKey().getKey().getKey());
             lines.add(new TooltipLine(eName + " " + roman(e.getValue()), C_ENCHANT, false));
         }
 
+<<<<<<< HEAD
+=======
+        // --- Lore ---
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         if (meta != null && meta.hasLore()) {
             List<String> lore = meta.getLore();
             if (lore != null) {
@@ -154,6 +186,10 @@ public class ItemTooltipRenderer {
             }
         }
 
+<<<<<<< HEAD
+=======
+        // --- Sub-label: material type (shown when item has a custom name) ---
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         if (hasCustomName) {
             lines.add(new TooltipLine(formatName(item.getType().name()), C_GRAY, true));
         }

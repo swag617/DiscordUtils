@@ -22,6 +22,10 @@ public class MinecraftChatListener implements Listener {
 
     private final DiscordUtils plugin;
 
+<<<<<<< HEAD
+=======
+    // Matches [item] case-insensitively
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
     private static final Pattern ITEM_PATTERN = Pattern.compile("(?i)\\[item]");
 
     public MinecraftChatListener(DiscordUtils plugin) {
@@ -33,6 +37,10 @@ public class MinecraftChatListener implements Listener {
         Player player = event.getPlayer();
         String raw = event.getMessage();
 
+<<<<<<< HEAD
+=======
+        // Apply MiniMessage formatting in-game if enabled and player has permission
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         if (plugin.getConfig().getBoolean("formatting.parse-minimessage", true)
                 && player.hasPermission("discordutils.formatting")) {
             String formatted = FormattingUtil.parseMiniMessage(raw);
@@ -49,12 +57,25 @@ public class MinecraftChatListener implements Listener {
         String rank = getRank(player);
         String authorDisplay = "[" + rank + "] " + player.getName();
 
+<<<<<<< HEAD
         if (ITEM_PATTERN.matcher(clean).find()) {
             ItemStack held = player.getInventory().getItemInMainHand();
 
             String itemName = getItemName(held);
             String messageWithItem = ITEM_PATTERN.matcher(clean).replaceAll("[" + itemName + "]");
 
+=======
+        // Check if the message contains [item]
+        if (ITEM_PATTERN.matcher(clean).find()) {
+            ItemStack held = player.getInventory().getItemInMainHand();
+
+            // Replace [item] in the message text with the item name inline
+            String itemName = getItemName(held);
+            String messageWithItem = ITEM_PATTERN.matcher(clean).replaceAll("[" + itemName + "]");
+
+            // Build the full Discord message string using the configured format,
+            // then send as an embed with the rendered tooltip attached
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
             String format = plugin.getConfig().getString("formatting.discord-send-format", "**[{rank}] {player}**: {message}");
             String discordMsg = format
                     .replace("{rank}", rank)
@@ -62,6 +83,10 @@ public class MinecraftChatListener implements Listener {
                     .replace("{message}", messageWithItem);
 
             if (held.getType() == Material.AIR) {
+<<<<<<< HEAD
+=======
+                // No item to render — just send as plain text
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
                 plugin.getDiscordBot().sendMessage(discordMsg);
             } else {
                 try {
@@ -73,6 +98,10 @@ public class MinecraftChatListener implements Listener {
                 }
             }
         } else {
+<<<<<<< HEAD
+=======
+            // No [item] — plain text message as normal
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
             String format = plugin.getConfig().getString("formatting.discord-send-format", "**[{rank}] {player}**: {message}");
             String discordMsg = format
                     .replace("{rank}", rank)

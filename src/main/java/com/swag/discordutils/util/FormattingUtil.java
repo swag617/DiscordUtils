@@ -52,6 +52,7 @@ public class FormattingUtil {
         FORMATS.put("reset",         "§r");
     }
 
+<<<<<<< HEAD
     public static String parseMiniMessage(String text) {
         if (text == null) return null;
 
@@ -61,6 +62,31 @@ public class FormattingUtil {
         text = HEX_COLOR_TAG.matcher(text).replaceAll(m -> hexToSection(m.group(1)));
         text = CLOSING_TAG.matcher(text).replaceAll("§r");
 
+=======
+    /**
+     * Parses MiniMessage-style tags, &#RRGGBB hex, and & color codes into
+     * Minecraft §-based formatting. Used for displaying formatted text in-game.
+     */
+    public static String parseMiniMessage(String text) {
+        if (text == null) return null;
+
+        // Convert & codes (e.g. &6, &l) -> § codes
+        text = translateAmpersand(text);
+
+        // Convert &#RRGGBB
+        text = HEX_HASH.matcher(text).replaceAll(m -> hexToSection(m.group(1)));
+
+        // Convert <#RRGGBB>
+        text = HEX_TAG.matcher(text).replaceAll(m -> hexToSection(m.group(1)));
+
+        // Convert <color:#RRGGBB>
+        text = HEX_COLOR_TAG.matcher(text).replaceAll(m -> hexToSection(m.group(1)));
+
+        // Closing tags -> §r
+        text = CLOSING_TAG.matcher(text).replaceAll("§r");
+
+        // Named color and format opening tags
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         for (Map.Entry<String, String> e : COLORS.entrySet()) {
             text = text.replace("<" + e.getKey() + ">", e.getValue());
         }
@@ -68,15 +94,33 @@ public class FormattingUtil {
             text = text.replace("<" + e.getKey() + ">", e.getValue());
         }
 
+<<<<<<< HEAD
+=======
+        // Remove any leftover unknown MiniMessage tags
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         text = text.replaceAll("</?[a-zA-Z_:#0-9]+>", "");
 
         return text;
     }
 
+<<<<<<< HEAD
     public static String stripFormatting(String text) {
         if (text == null) return null;
         text = STRIP_SECTION.matcher(text).replaceAll("");
         text = STRIP_AMPERSAND.matcher(text).replaceAll("");
+=======
+    /**
+     * Strips all Minecraft formatting (§ codes, MiniMessage tags, &#hex, &codes)
+     * from text. Used to produce clean plain text for Discord.
+     */
+    public static String stripFormatting(String text) {
+        if (text == null) return null;
+        // Strip §x hex codes first (longer pattern), then regular § codes
+        text = STRIP_SECTION.matcher(text).replaceAll("");
+        // Strip & color codes (e.g. from Vault prefixes: &a, &c, &l)
+        text = STRIP_AMPERSAND.matcher(text).replaceAll("");
+        // Strip any remaining MiniMessage/hex tags
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         text = HEX_HASH.matcher(text).replaceAll("");
         text = HEX_TAG.matcher(text).replaceAll("");
         text = HEX_COLOR_TAG.matcher(text).replaceAll("");
@@ -84,9 +128,19 @@ public class FormattingUtil {
         return text;
     }
 
+<<<<<<< HEAD
     // Order matters: ** must be matched before * to avoid partial matches.
     public static String discordToMinecraft(String text) {
         if (text == null) return null;
+=======
+    /**
+     * Converts Discord markdown to Minecraft §-based formatting.
+     * **bold** -> §lbold§r, *italic* -> §oitalic§r, etc.
+     */
+    public static String discordToMinecraft(String text) {
+        if (text == null) return null;
+        // Order matters: process ** before * to avoid mismatches
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         text = text.replaceAll("\\*\\*(.+?)\\*\\*", "§l$1§r");
         text = text.replaceAll("~~(.+?)~~",          "§m$1§r");
         text = text.replaceAll("__(.+?)__",          "§n$1§r");
@@ -96,6 +150,10 @@ public class FormattingUtil {
         return text;
     }
 
+<<<<<<< HEAD
+=======
+    // Converts a 6-character hex string to §x§R§R§G§G§B§B Spigot format
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
     private static String hexToSection(String hex) {
         StringBuilder sb = new StringBuilder("§x");
         for (char c : hex.toCharArray()) {
@@ -104,6 +162,10 @@ public class FormattingUtil {
         return sb.toString();
     }
 
+<<<<<<< HEAD
+=======
+    // Translates & color codes to § but only for recognized codes (0-9, a-f, k-r)
+>>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
     private static String translateAmpersand(String text) {
         if (!text.contains("&")) return text;
         char[] chars = text.toCharArray();
