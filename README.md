@@ -1,8 +1,26 @@
-# DiscordUtils
+<div align="center">
 
-A standalone Spigot/Paper plugin that bridges Minecraft and Discord using JDA. No DiscordSRV required.
+<br>
 
-## Features
+# ✦ DiscordUtils
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Paper-1.20+-667eea?style=for-the-badge" alt="Paper 1.20+">
+  <img src="https://img.shields.io/badge/Java-21-764ba2?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 21">
+  <img src="https://img.shields.io/badge/JDA-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="JDA">
+  <img src="https://img.shields.io/badge/License-All%20Rights%20Reserved-f0c060?style=for-the-badge" alt="License">
+</p>
+
+**A standalone Spigot/Paper plugin that bridges Minecraft and Discord using JDA.**
+No DiscordSRV required — chat bridging, account linking, item previews, and auction logging out of the box.
+
+<br>
+
+</div>
+
+---
+
+## ✦ Features
 
 - **Chat bridge** — Minecraft chat relayed to Discord; Discord messages broadcast in-game
 - **Item display** — typing `[item]` in chat renders an item tooltip image and attaches it to the Discord message
@@ -14,7 +32,26 @@ A standalone Spigot/Paper plugin that bridges Minecraft and Discord using JDA. N
 - **Role display** — Discord→Minecraft messages show the sender's highest configured role
 - **MiniMessage support** — players with permission can use MiniMessage tags and hex colors in chat
 
-## Requirements
+---
+
+## ✦ Installation
+
+1. Download `DiscordUtils.jar` from [Releases](https://github.com/swag617/DiscordUtils/releases)
+2. Drop it into your server's `plugins/` folder alongside Vault and LuckPerms
+3. Start the server once to generate `plugins/DiscordUtils/config.yml`, then stop it
+4. Create a Discord bot at <https://discord.com/developers/applications>, enable both privileged intents, and paste the token into `bot-token`
+5. Enable Developer Mode in Discord, right-click your bridge channel, copy its ID, and paste it into `channel-id`
+6. Invite the bot with permissions: **Send Messages, Embed Links, Attach Files, Manage Roles**
+7. Start the server — the bot will connect and post a status message to the channel
+
+> **Requirements:** Paper / Spigot 1.20+ — Java 21 — Vault — LuckPerms
+> **Bot intents required:** Enable **Message Content Intent** AND **Server Members Intent** (Privileged Gateway Intents) in the Discord Developer Portal.
+
+See [docs/setup.md](docs/setup.md) for a full walkthrough.
+
+---
+
+## ✦ Dependencies
 
 | Dependency | Required | Notes |
 |---|---|---|
@@ -25,20 +62,9 @@ A standalone Spigot/Paper plugin that bridges Minecraft and Discord using JDA. N
 | CMI | No | AFK detection uses native CMI events when present |
 | zAuctionHouse | No | Auction House logging only activates if detected |
 
-> **Bot intents required:** You must enable **Message Content Intent** AND **Server Members Intent** (both are Privileged Gateway Intents) in the [Discord Developer Portal](https://discord.com/developers/applications). Without them the bot cannot read message content or manage member roles.
+---
 
-## Quick Setup
-
-1. Drop `DiscordUtils.jar` into your server's `plugins/` folder alongside Vault and LuckPerms.
-2. Start the server once to generate `plugins/DiscordUtils/config.yml`, then stop it.
-3. Create a Discord bot at <https://discord.com/developers/applications>, enable both privileged intents, and copy the bot token into `bot-token`.
-4. Enable Developer Mode in Discord, right-click your bridge channel, copy its ID, and paste it into `channel-id`.
-5. Invite the bot to your server with the permissions: **Send Messages, Embed Links, Attach Files, Manage Roles**.
-6. Start the server. The bot should connect and post a status message to the channel.
-
-See [docs/setup.md](docs/setup.md) for a full walkthrough.
-
-## Commands
+## ✦ Commands
 
 | Command | Description | Permission |
 |---|---|---|
@@ -48,7 +74,9 @@ See [docs/setup.md](docs/setup.md) for a full walkthrough.
 | `/discordlink` | Link your Minecraft account to Discord | `discordutils.link` |
 | `/discordunlink` | Unlink your Minecraft account from Discord | `discordutils.link` |
 
-## Permissions
+---
+
+## ✦ Permissions
 
 | Permission | Description | Default |
 |---|---|---|
@@ -56,10 +84,20 @@ See [docs/setup.md](docs/setup.md) for a full walkthrough.
 | `discordutils.link` | Access to `/discordlink` and `/discordunlink` | true |
 | `discordutils.formatting` | Use MiniMessage/hex color tags in chat | true |
 
-## Documentation
+---
+
+## ✦ Documentation
 
 - [Setup guide](docs/setup.md)
 - [Chat bridge](docs/chat-bridge.md)
 - [Account linking](docs/account-linking.md)
 - [Auction House logging](docs/auction-house.md)
 - [Permissions reference](docs/permissions.md)
+
+---
+
+<div align="center">
+
+**Built by [Swag617](https://swag617.github.io/) · [Portfolio](https://swag617.github.io/) · [SwagMenus](https://github.com/swag617/SwagMenus)**
+
+</div>
