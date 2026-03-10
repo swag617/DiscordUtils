@@ -1,0 +1,118 @@
+# DiscordUtils Configuration
+# Set to true to log every caught broadcast to console - useful for diagnosing AFK/mini-game relay issues.
+debug: false
+# IMPORTANT: You must enable the "Message Content Intent" (Privileged Gateway Intent)
+# in your bot's settings at https://discord.com/developers/applications
+# Without it, getContentDisplay() will always return empty for non-bot messages.
+
+# Your Discord bot token - get it from the Discord Developer Portal.
+bot-token: "YOUR_BOT_TOKEN_HERE"
+
+# The ID of the Discord channel to bridge with Minecraft chat.
+# Right-click the channel in Discord (with Developer Mode on) and click "Copy ID".
+channel-id: "YOUR_CHANNEL_ID_HERE"
+
+# Send a message to Discord when the bot connects/disconnects.
+announce-status: true
+
+formatting:
+  # Parse MiniMessage tags (<red>, <bold>, <#FF5733>) and & codes in Minecraft chat.
+  parse-minimessage: true
+  # Strip formatting codes before sending to Discord (keeps Discord messages clean).
+  strip-for-discord: true
+  # Format for Minecraft messages sent to Discord.
+  # Placeholders: {player}, {message}
+  # {rank} comes from Vault prefix (falls back to group name, then "Player" if no Vault)
+  discord-send-format: "**[{rank}] {player}**: {message}"
+
+discord-chat:
+  # Master toggle for relaying Discord messages to Minecraft.
+  enabled: true
+  # If true, ALL Discord users can chat to Minecraft.
+  # If false, only Discord users with the configured admin role can chat to Minecraft.
+  # Use /discordchat allow all    -> sets this to true
+  # Use /discordchat allow admins -> sets this to false
+  allow-everyone: true
+  # The name of the Discord role considered "admin" when allow-everyone is false.
+  admin-role-name: "Admin"
+  # Alternatively, set the Discord role ID (takes priority over name if not empty).
+  admin-role-id: ""
+  # Format for Discord messages shown in Minecraft.
+  # Supports & color codes and MiniMessage tags.
+  # Placeholders: {username}, {role}, {message}
+  # {role} = the member's highest Discord role name (e.g. "Admin", "VIP")
+  format: "&7[&bDiscord&7] &b[{role}] {username}&7: &f{message}"
+  # Convert Discord **bold**, *italic*, ~~strikethrough~~ and __underline__ to
+  # Minecraft formatting codes in the relayed message.
+  convert-discord-markdown: true
+  # Only these Discord roles will be shown as {role} in the Minecraft chat format.
+  # The player's highest role from this list is used. Falls back to "Member" if none match.
+  # Order here doesn't matter - Discord's role position hierarchy determines which is "highest".
+  display-roles:
+    - Owner
+    - Manager
+    - Admin
+    - Mod
+    - Helper
+    - Support
+    - Flea
+
+# Auction House logging - logs listing, sale, and removal events to a Discord channel.
+# Requires zAuctionHouse to be installed on the server.
+auction-house:
+  enabled: true
+  # The Discord channel ID to send auction log embeds to.
+  # Can be the same as channel-id above, or a separate #auction-log channel.
+  channel-id: "YOUR_AUCTION_CHANNEL_ID_HERE"
+
+# Discord account linking - lets players run /discordlink to connect their Minecraft and Discord accounts.
+# Requires: Discord application OAuth2 credentials (from https://discord.com/developers/applications)
+link:
+  # Your Discord Application's Client ID (OAuth2 > General > Client ID)
+  client-id: "YOUR_CLIENT_ID_HERE"
+  # Your Discord Application's Client Secret (OAuth2 > General > Client Secret)
+  client-secret: "YOUR_CLIENT_SECRET_HERE"
+  # The public IP or domain of your Minecraft server. Discord redirects here after OAuth2 authorization.
+  # Example: "123.456.789.0" or "play.yourserver.com"
+  server-ip: "YOUR_SERVER_IP_HERE"
+  # Port for the embedded link HTTP server. Must be open/port-forwarded on your machine.
+  port: 4567
+  # Your Discord Guild (server) ID. Right-click your server icon in Discord > Copy Server ID.
+  guild-id: "YOUR_GUILD_ID_HERE"
+  # The names of Discord roles that this plugin manages (one per rank).
+  # These must exactly match the role names in your Discord server.
+  # The plugin assigns the role whose name matches the player's LuckPerms group (case-insensitive).
+  rank-role-names:
+    - Axolotl
+    - Lizard
+    - Flea
+
+# Join/leave messages sent to Discord when players connect or disconnect.
+join-leave:
+  enabled: true
+  # Placeholders: {player}
+  join-format: ":green_circle: **{player}** joined the server."
+  leave-format: ":red_circle: **{player}** left the server."
+
+# AFK detection - works with CMI, EssentialsX, or any plugin that broadcasts AFK messages.
+# We scan the broadcast for AFK-related keywords and then look for an online player's
+# name in the same message. No regex config needed.
+afk:
+  enabled: true
+  # Placeholders: {player}
+  afk-format: ":zzz: **{player}** is now AFK."
+  back-format: ":wave: **{player}** is no longer AFK."
+
+# Relay server/plugin broadcast messages (e.g. mini-game events) to Discord.
+# BroadcastMessageEvent fires when Bukkit.broadcastMessage() is called by any plugin.
+server-messages:
+  enabled: true
+  # Only relay broadcasts whose text (after stripping color codes) starts with one of
+  # these prefixes. Use "*" as the sole entry to relay ALL server broadcasts.
+  relay-prefixes:
+    - "[MiniGame]"
+    - "[Trivia]"
+    - "[Quiz]"
+    - "[Event]"
+  # Format sent to Discord. Placeholders: {message}
+  discord-format: ":game_die: {message}"
