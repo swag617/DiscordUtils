@@ -51,6 +51,7 @@
       homepage: 'README.md',
       loadSidebar: 'sidebar.md',
       coverpage: 'coverpage.md',
+      onlyCover: true,
       auto2top: true,
       maxLevel: 3,
       subMaxLevel: 2,
@@ -100,6 +101,19 @@
   <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
   <script src="//cdn.jsdelivr.net/npm/docsify-copy-code@2"></script>
   <script src="//cdn.jsdelivr.net/npm/docsify-pagination/dist/docsify-pagination.min.js"></script>
+  <script>
+    document.addEventListener('click', function(e) {
+      var link = e.target.closest('section.cover a');
+      if (!link) return;
+      var href = link.getAttribute('href');
+      if (!href || href.startsWith('http') || href.startsWith('//')) return;
+      var overlay = document.getElementById('page-transition');
+      overlay.classList.add('active');
+      overlay.addEventListener('animationend', function() {
+        overlay.classList.remove('active');
+      }, { once: true });
+    });
+  </script>
 
   <style>
     :root {
@@ -364,6 +378,22 @@
       transition: border-color 0.2s;
     }
     .pagination-item a:hover { border-color: var(--theme-color) !important; }
+
+    @keyframes transitionFlash {
+      0%   { opacity: 0; transform: scale(0.95); }
+      40%  { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.08); }
+    }
+
+    #page-transition {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, #070a1a, #1a1f4e, #7289da, #5865F2);
+      background-size: 300% 300%;
+      z-index: 9999; opacity: 0; pointer-events: none;
+    }
+    #page-transition.active {
+      animation: transitionFlash 0.7s ease forwards;
+    }
 
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #1a1a1a; }
