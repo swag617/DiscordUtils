@@ -2,6 +2,8 @@
 
 A standalone Spigot/Paper plugin that bridges Minecraft and Discord using JDA.
 
+➡️ **[Installation & Setup](setup.md)** — Start here
+
 ## Features
 
 - **Chat bridge** — Minecraft chat relayed to Discord; Discord messages broadcast in-game
