@@ -1,6 +1,6 @@
 # DiscordUtils
 
-A standalone Spigot/Paper plugin that bridges Minecraft and Discord using JDA. No DiscordSRV required.
+A standalone Spigot/Paper plugin that bridges Minecraft and Discord using JDA.
 
 ## Features
 

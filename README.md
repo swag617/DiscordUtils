@@ -12,7 +12,7 @@
 </p>
 
 **A standalone Spigot/Paper plugin that bridges Minecraft and Discord using JDA.**
-No DiscordSRV required — chat bridging, account linking, item previews, and auction logging out of the box.
+Chat bridging, account linking, item previews, and auction logging out of the box.
 
 <br>
 
