@@ -26,13 +26,10 @@ public class DiscordBot {
         this.plugin = plugin;
     }
 
-<<<<<<< HEAD
-=======
     /**
      * Starts the JDA connection. Called from onEnable() on the main thread.
      * Does NOT call awaitReady() to avoid blocking the server.
      */
->>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
     public void connect(Object... extraListeners) {
         String token = plugin.getConfig().getString("bot-token", "");
         if (token.isEmpty() || token.equals("YOUR_BOT_TOKEN_HERE")) {
@@ -48,14 +45,9 @@ public class DiscordBot {
                     GatewayIntent.GUILD_MESSAGES,
                     GatewayIntent.MESSAGE_CONTENT,
                     GatewayIntent.DIRECT_MESSAGES,
-<<<<<<< HEAD
-                    GatewayIntent.GUILD_MEMBERS); // privileged intent - enable in Discord Dev Portal
-
-=======
                     GatewayIntent.GUILD_MEMBERS); // GUILD_MEMBERS is a privileged intent - enable in Discord Dev Portal
 
             // Inner ReadyListener sets the ready flag and logs the bot name
->>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
             builder.addEventListeners(new ListenerAdapter() {
                 @Override
                 public void onReady(ReadyEvent event) {
@@ -72,21 +64,15 @@ public class DiscordBot {
             }
 
             jda = builder.build();
-<<<<<<< HEAD
-=======
             // Do NOT call awaitReady() here - it would block the main server thread
->>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to connect DiscordUtils bot: " + e.getMessage(), e);
         }
     }
 
-<<<<<<< HEAD
-=======
     /**
      * Gracefully shuts down the JDA connection. Called from onDisable().
      */
->>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
     public void shutdown() {
         if (jda == null) return;
         if (plugin.getConfig().getBoolean("announce-status", true) && ready) {
@@ -104,24 +90,19 @@ public class DiscordBot {
         }
     }
 
-<<<<<<< HEAD
-=======
     /**
-     * Sends a message to the configured channel. Reads channel-id at send-time
-     * so hot-reloads of config take effect without a restart.
+     * Sends a plain-text message to the configured chat channel. Reads chat.server
+     * and chat.channel-id at send-time so hot-reloads take effect without a restart.
      */
->>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
     public void sendMessage(String text) {
         if (!ready || jda == null) return;
 
-        String channelId = plugin.getConfig().getString("channel-id", "");
+        int serverNumber = plugin.getConfig().getInt("chat.server", 1);
+        String channelId = plugin.getConfig().getString("chat.channel-id", "");
         if (channelId.isEmpty() || channelId.equals("YOUR_CHANNEL_ID_HERE")) return;
 
-        TextChannel channel = jda.getTextChannelById(channelId);
-        if (channel == null) {
-            plugin.getLogger().warning("Could not find Discord channel with ID: " + channelId);
-            return;
-        }
+        TextChannel channel = getTextChannel(serverNumber, channelId);
+        if (channel == null) return;
 
         channel.sendMessage(text).queue(
                 null,
@@ -129,24 +110,39 @@ public class DiscordBot {
         );
     }
 
-<<<<<<< HEAD
-=======
+    /**
+     * Sends a plain-text message to the server-messages channel.
+     * Reads server-messages.server and server-messages.channel-id at send-time.
+     */
+    public void sendServerMessageText(String text) {
+        if (!ready || jda == null) return;
+
+        int serverNumber = plugin.getConfig().getInt("server-messages.server", 1);
+        String channelId = plugin.getConfig().getString("server-messages.channel-id", "");
+        if (channelId.isEmpty() || channelId.equals("YOUR_CHANNEL_ID_HERE")) return;
+
+        TextChannel channel = getTextChannel(serverNumber, channelId);
+        if (channel == null) return;
+
+        channel.sendMessage(text).queue(
+                null,
+                err -> plugin.getLogger().warning("Failed to send server message to Discord: " + err.getMessage())
+        );
+    }
+
     /**
      * Sends a join or leave embed with the player's head as the thumbnail.
-     * The head image is fetched from the Crafatar CDN using the player's UUID.
+     * The head image is fetched from the mc-heads.net CDN using the player's UUID.
      */
->>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
     public void sendJoinLeaveEmbed(String playerName, UUID playerUuid, boolean joined) {
         if (!ready || jda == null) return;
 
-        String channelId = plugin.getConfig().getString("channel-id", "");
+        int serverNumber = plugin.getConfig().getInt("join-leave.server", 1);
+        String channelId = plugin.getConfig().getString("join-leave.channel-id", "");
         if (channelId.isEmpty() || channelId.equals("YOUR_CHANNEL_ID_HERE")) return;
 
-        TextChannel channel = jda.getTextChannelById(channelId);
-        if (channel == null) {
-            plugin.getLogger().warning("Could not find Discord channel with ID: " + channelId);
-            return;
-        }
+        TextChannel channel = getTextChannel(serverNumber, channelId);
+        if (channel == null) return;
 
         String configKey = joined ? "join-leave.join-format" : "join-leave.leave-format";
         String defaultFmt = joined
@@ -155,15 +151,9 @@ public class DiscordBot {
         String description = plugin.getConfig().getString(configKey, defaultFmt)
                 .replace("{player}", playerName);
 
-<<<<<<< HEAD
-        String headUrl = "https://mc-heads.net/avatar/" + playerUuid + "/64";
-=======
-        // Crafatar provides player head renders by UUID. The overlay=true flag
-        // includes the outer helmet/hat layer, matching the in-game appearance.
         String headUrl = "https://mc-heads.net/avatar/" + playerUuid + "/64";
 
         // Green for join, red for leave - matching Discord's status colours
->>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         Color color = joined ? new Color(0x57, 0xF2, 0x87) : new Color(0xED, 0x42, 0x45);
 
         var embed = new EmbedBuilder()
@@ -179,25 +169,20 @@ public class DiscordBot {
         );
     }
 
-<<<<<<< HEAD
-=======
     /**
      * Sends an AFK status embed with the player's head as the thumbnail.
      *
      * @param goingAfk true if the player is going AFK, false if they are returning
      */
->>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
     public void sendAfkEmbed(String playerName, UUID playerUuid, boolean goingAfk) {
         if (!ready || jda == null) return;
 
-        String channelId = plugin.getConfig().getString("channel-id", "");
+        int serverNumber = plugin.getConfig().getInt("afk.server", 1);
+        String channelId = plugin.getConfig().getString("afk.channel-id", "");
         if (channelId.isEmpty() || channelId.equals("YOUR_CHANNEL_ID_HERE")) return;
 
-        TextChannel channel = jda.getTextChannelById(channelId);
-        if (channel == null) {
-            plugin.getLogger().warning("Could not find Discord channel with ID: " + channelId);
-            return;
-        }
+        TextChannel channel = getTextChannel(serverNumber, channelId);
+        if (channel == null) return;
 
         String configKey  = goingAfk ? "afk.afk-format" : "afk.back-format";
         String defaultFmt = goingAfk ? ":zzz: **{player}** is now AFK." : ":wave: **{player}** is no longer AFK.";
@@ -205,11 +190,8 @@ public class DiscordBot {
                 .replace("{player}", playerName);
 
         String headUrl = "https://mc-heads.net/avatar/" + playerUuid + "/64";
-<<<<<<< HEAD
-=======
 
         // Yellow for going AFK, light blue for returning
->>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         Color color = goingAfk ? new Color(0xFF, 0xD7, 0x00) : new Color(0x00, 0xB0, 0xFF);
 
         var embed = new EmbedBuilder()
@@ -225,8 +207,6 @@ public class DiscordBot {
         );
     }
 
-<<<<<<< HEAD
-=======
     /**
      * Sends a chat message as a Discord embed with a rendered item tooltip image attached.
      *
@@ -234,18 +214,15 @@ public class DiscordBot {
      * @param messageText    the chat message (with [item] already replaced by item name inline)
      * @param tooltipImage   PNG bytes from ItemTooltipRenderer
      */
->>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
     public void sendItemEmbed(String authorDisplay, String messageText, byte[] tooltipImage) {
         if (!ready || jda == null) return;
 
-        String channelId = plugin.getConfig().getString("channel-id", "");
+        int serverNumber = plugin.getConfig().getInt("chat.server", 1);
+        String channelId = plugin.getConfig().getString("chat.channel-id", "");
         if (channelId.isEmpty() || channelId.equals("YOUR_CHANNEL_ID_HERE")) return;
 
-        TextChannel channel = jda.getTextChannelById(channelId);
-        if (channel == null) {
-            plugin.getLogger().warning("Could not find Discord channel with ID: " + channelId);
-            return;
-        }
+        TextChannel channel = getTextChannel(serverNumber, channelId);
+        if (channel == null) return;
 
         var embed = new EmbedBuilder()
                 .setAuthor("Item Display")
@@ -259,8 +236,6 @@ public class DiscordBot {
                 .queue(null, err -> plugin.getLogger().warning("Failed to send item embed: " + err.getMessage()));
     }
 
-<<<<<<< HEAD
-=======
     /**
      * Sends an auction house action embed to the configured auction log channel.
      *
@@ -272,19 +247,16 @@ public class DiscordBot {
      * @param sellerName  username of the seller
      * @param secondParty buyer name (for SOLD) or admin name (for ADMIN_REMOVED), null otherwise
      */
->>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
     public void sendAuctionEmbed(AuctionAction action, String itemName, int amount,
                                  String material, long price, String sellerName, String secondParty) {
         if (!ready || jda == null) return;
 
+        int serverNumber = plugin.getConfig().getInt("auction-house.server", 1);
         String channelId = plugin.getConfig().getString("auction-house.channel-id", "");
         if (channelId.isEmpty() || channelId.equals("YOUR_AUCTION_CHANNEL_ID_HERE")) return;
 
-        TextChannel channel = jda.getTextChannelById(channelId);
-        if (channel == null) {
-            plugin.getLogger().warning("Could not find auction log channel with ID: " + channelId);
-            return;
-        }
+        TextChannel channel = getTextChannel(serverNumber, channelId);
+        if (channel == null) return;
 
         Color color;
         String title;
@@ -296,10 +268,7 @@ public class DiscordBot {
             default            -> { color = Color.GRAY;                  title = "Auction House"; }
         }
 
-<<<<<<< HEAD
-=======
         // Fetch the badge image (cached after first render)
->>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         byte[] badge = null;
         try {
             badge = switch (action) {
@@ -341,6 +310,87 @@ public class DiscordBot {
         msg.queue(
                 null,
                 err -> plugin.getLogger().warning("Failed to send auction embed: " + err.getMessage())
+        );
+    }
+
+    /**
+     * Resolves a TextChannel from the multi-guild servers map.
+     *
+     * Config shape:
+     * <pre>
+     * servers:
+     *   1:
+     *     guild-id: "111111111111111111"
+     *   2:
+     *     guild-id: "222222222222222222"
+     * </pre>
+     *
+     * @param serverNumber the integer key in config.servers (e.g. 1 or 2)
+     * @param channelId    the Discord channel ID string
+     * @return the TextChannel, or null if not found (with a warning logged)
+     */
+    public TextChannel getTextChannel(int serverNumber, String channelId) {
+        if (!ready || jda == null) return null;
+        if (channelId == null || channelId.isEmpty()) return null;
+
+        String guildId = plugin.getConfig().getString("servers." + serverNumber + ".guild-id", "");
+        if (guildId.isEmpty()) {
+            plugin.getLogger().warning("No guild-id configured for servers." + serverNumber + " in config.yml");
+            return null;
+        }
+
+        net.dv8tion.jda.api.entities.Guild guild = jda.getGuildById(guildId);
+        if (guild == null) {
+            plugin.getLogger().warning("Bot is not a member of guild " + guildId + " (servers." + serverNumber + ")");
+            return null;
+        }
+
+        TextChannel channel = guild.getTextChannelById(channelId);
+        if (channel == null) {
+            plugin.getLogger().warning("Could not find channel " + channelId + " in guild " + guild.getName());
+        }
+        return channel;
+    }
+
+    /**
+     * Sends a punishment embed when a player is banned.
+     *
+     * @param playerName   the banned player's name
+     * @param playerUuid   the banned player's UUID
+     * @param reason       the ban reason (may be null)
+     * @param bannedBy     operator or "Console" who issued the ban (may be null)
+     */
+    public void sendPunishmentEmbed(String playerName, java.util.UUID playerUuid,
+                                    String reason, String bannedBy) {
+        if (!ready || jda == null) return;
+        if (!plugin.getConfig().getBoolean("punishments.enabled", false)) return;
+
+        int serverNumber = plugin.getConfig().getInt("punishments.server", 1);
+        String channelId = plugin.getConfig().getString("punishments.channel-id", "");
+        if (channelId.isEmpty() || channelId.equals("CHANNEL_ID_HERE")) return;
+
+        TextChannel channel = getTextChannel(serverNumber, channelId);
+        if (channel == null) return;
+
+        String safeReason  = (reason   != null && !reason.isEmpty())   ? reason   : "No reason provided";
+        String safeBannedBy = (bannedBy != null && !bannedBy.isEmpty()) ? bannedBy : "Unknown";
+
+        String headUrl = "https://mc-heads.net/avatar/" + playerUuid + "/64";
+
+        var embed = new EmbedBuilder()
+                .setTitle(":hammer: Player Banned")
+                .setColor(new Color(0xED, 0x42, 0x45))
+                .setThumbnail(headUrl)
+                .addField("Player", playerName, true)
+                .addField("UUID", playerUuid.toString(), false)
+                .addField("Reason", safeReason, false)
+                .addField("Banned By", safeBannedBy, true)
+                .setTimestamp(java.time.Instant.now())
+                .build();
+
+        channel.sendMessageEmbeds(embed).queue(
+                null,
+                err -> plugin.getLogger().warning("Failed to send punishment embed: " + err.getMessage())
         );
     }
 

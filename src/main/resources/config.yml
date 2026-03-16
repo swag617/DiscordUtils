@@ -1,4 +1,6 @@
 # DiscordUtils Configuration
+# config-version - Do NOT change this value manually.
+config-version: 1
 # Set to true to log every caught broadcast to console - useful for diagnosing AFK/mini-game relay issues.
 debug: false
 # IMPORTANT: You must enable the "Message Content Intent" (Privileged Gateway Intent)
@@ -7,10 +9,6 @@ debug: false
 
 # Your Discord bot token - get it from the Discord Developer Portal.
 bot-token: "YOUR_BOT_TOKEN_HERE"
-
-# The ID of the Discord channel to bridge with Minecraft chat.
-# Right-click the channel in Discord (with Developer Mode on) and click "Copy ID".
-channel-id: "YOUR_CHANNEL_ID_HERE"
 
 # Send a message to Discord when the bot connects/disconnects.
 announce-status: true
@@ -24,6 +22,14 @@ formatting:
   # Placeholders: {player}, {message}
   # {rank} comes from Vault prefix (falls back to group name, then "Player" if no Vault)
   discord-send-format: "**[{rank}] {player}**: {message}"
+
+# Main Minecraft → Discord chat bridge.
+chat:
+  # Which entry from the 'servers' map below this channel belongs to.
+  server: 1
+  # The ID of the Discord channel to bridge with Minecraft chat.
+  # Right-click the channel in Discord (with Developer Mode on) and click "Copy ID".
+  channel-id: "YOUR_CHANNEL_ID_HERE"
 
 discord-chat:
   # Master toggle for relaying Discord messages to Minecraft.
@@ -61,8 +67,10 @@ discord-chat:
 # Requires zAuctionHouse to be installed on the server.
 auction-house:
   enabled: true
+  # Which entry from the 'servers' map below this channel belongs to.
+  server: 1
   # The Discord channel ID to send auction log embeds to.
-  # Can be the same as channel-id above, or a separate #auction-log channel.
+  # Can be the same as chat.channel-id above, or a separate #auction-log channel.
   channel-id: "YOUR_AUCTION_CHANNEL_ID_HERE"
 
 # Discord account linking - lets players run /discordlink to connect their Minecraft and Discord accounts.
@@ -77,19 +85,39 @@ link:
   server-ip: "YOUR_SERVER_IP_HERE"
   # Port for the embedded link HTTP server. Must be open/port-forwarded on your machine.
   port: 4567
-  # Your Discord Guild (server) ID. Right-click your server icon in Discord > Copy Server ID.
-  guild-id: "YOUR_GUILD_ID_HERE"
+  # Which entry from the 'servers' map below to use for role assignment.
+  server: 1
   # The names of Discord roles that this plugin manages (one per rank).
   # These must exactly match the role names in your Discord server.
   # The plugin assigns the role whose name matches the player's LuckPerms group (case-insensitive).
   rank-role-names:
-    - Axolotl
-    - Lizard
-    - Flea
+    - Default
+
+# Multi-guild support - map server numbers to Discord guild IDs.
+# The bot must be a member of every guild listed here (invite it with the bot OAuth2 scope).
+# Use these server numbers in other config sections (e.g. punishments.server: 1).
+servers:
+  1:
+    # Right-click your Discord server icon > Copy Server ID (Developer Mode must be on).
+    guild-id: "YOUR_GUILD_ID_HERE"
+  2:
+    guild-id: "YOUR_SECOND_GUILD_ID_HERE"
+
+# Punishment logging - posts a ban embed to a Discord channel whenever a player is banned.
+punishments:
+  enabled: false
+  # Which entry from the 'servers' map above this channel belongs to.
+  server: 1
+  # The Discord channel ID to post ban embeds to.
+  channel-id: "CHANNEL_ID_HERE"
 
 # Join/leave messages sent to Discord when players connect or disconnect.
 join-leave:
   enabled: true
+  # Which entry from the 'servers' map above this channel belongs to.
+  server: 1
+  # The Discord channel ID to send join/leave embeds to.
+  channel-id: "YOUR_CHANNEL_ID_HERE"
   # Placeholders: {player}
   join-format: ":green_circle: **{player}** joined the server."
   leave-format: ":red_circle: **{player}** left the server."
@@ -99,6 +127,10 @@ join-leave:
 # name in the same message. No regex config needed.
 afk:
   enabled: true
+  # Which entry from the 'servers' map above this channel belongs to.
+  server: 1
+  # The Discord channel ID to send AFK embeds to.
+  channel-id: "YOUR_CHANNEL_ID_HERE"
   # Placeholders: {player}
   afk-format: ":zzz: **{player}** is now AFK."
   back-format: ":wave: **{player}** is no longer AFK."
@@ -107,6 +139,10 @@ afk:
 # BroadcastMessageEvent fires when Bukkit.broadcastMessage() is called by any plugin.
 server-messages:
   enabled: true
+  # Which entry from the 'servers' map above this channel belongs to.
+  server: 1
+  # The Discord channel ID to send server broadcast messages to.
+  channel-id: "YOUR_CHANNEL_ID_HERE"
   # Only relay broadcasts whose text (after stripping color codes) starts with one of
   # these prefixes. Use "*" as the sole entry to relay ALL server broadcasts.
   relay-prefixes:

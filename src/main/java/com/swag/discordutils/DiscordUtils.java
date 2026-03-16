@@ -11,6 +11,7 @@ import com.swag.discordutils.listeners.DiscordMessageListener;
 import com.swag.discordutils.listeners.AuctionHouseListener;
 import com.swag.discordutils.listeners.CmiAfkListener;
 import com.swag.discordutils.listeners.MinecraftChatListener;
+import com.swag.discordutils.listeners.PunishmentsListener;
 import com.swag.discordutils.listeners.ServerEventListener;
 import net.milkbowl.vault.chat.Chat;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -30,25 +31,21 @@ public class DiscordUtils extends JavaPlugin {
     public void onEnable() {
         instance = this;
         saveDefaultConfig();
+        migrateConfig();
 
         setupVault();
         setupLinkSystem();
 
         discordBot = new DiscordBot(this);
 
-<<<<<<< HEAD
-        DiscordMessageListener discordMessageListener = new DiscordMessageListener(this);
-        discordBot.connect(discordMessageListener);
-
-=======
         // Register the JDA listener before connecting so events aren't missed
         DiscordMessageListener discordMessageListener = new DiscordMessageListener(this);
         discordBot.connect(discordMessageListener);
 
         // Bukkit listeners
->>>>>>> 31bb7b49538eff7be8066ff17ceb9a55cf18290c
         getServer().getPluginManager().registerEvents(new MinecraftChatListener(this), this);
         getServer().getPluginManager().registerEvents(new ServerEventListener(this), this);
+        getServer().getPluginManager().registerEvents(new PunishmentsListener(this), this);
         setupAfkListener();
         setupAuctionHouseListener();
 
@@ -121,6 +118,97 @@ public class DiscordUtils extends JavaPlugin {
         } else {
             getLogger().info("CMI not found - AFK embeds disabled.");
         }
+    }
+
+    private void migrateConfig() {
+        int version = getConfig().getInt("config-version", 0);
+        boolean dirty = false;
+
+        if (version < 1) {
+            // Version 1 — initial release. Ensures all base keys exist with sensible defaults.
+
+            // Rescue old channel-id value BEFORE removing it, so it can seed the new per-section keys.
+            String oldChannelId = getConfig().getString("channel-id", "");
+
+            // Remove old top-level keys that were restructured.
+            if (getConfig().isSet("channel-id"))    getConfig().set("channel-id",    null);
+            if (getConfig().isSet("link.guild-id")) getConfig().set("link.guild-id", null);
+
+            // Top-level keys
+            if (!getConfig().isSet("debug"))           getConfig().set("debug",           false);
+            if (!getConfig().isSet("bot-token"))       getConfig().set("bot-token",       "YOUR_BOT_TOKEN_HERE");
+            if (!getConfig().isSet("announce-status")) getConfig().set("announce-status", true);
+
+            // formatting section
+            if (!getConfig().isSet("formatting.parse-minimessage"))   getConfig().set("formatting.parse-minimessage",   true);
+            if (!getConfig().isSet("formatting.strip-for-discord"))   getConfig().set("formatting.strip-for-discord",   true);
+            if (!getConfig().isSet("formatting.discord-send-format")) getConfig().set("formatting.discord-send-format", "**[{rank}] {player}**: {message}");
+
+            // chat section
+            if (!getConfig().isSet("chat.server"))     getConfig().set("chat.server",     1);
+            if (!getConfig().isSet("chat.channel-id")) getConfig().set("chat.channel-id", oldChannelId.isEmpty() ? "YOUR_CHANNEL_ID_HERE" : oldChannelId);
+
+            // discord-chat section
+            if (!getConfig().isSet("discord-chat.enabled"))                  getConfig().set("discord-chat.enabled",                  true);
+            if (!getConfig().isSet("discord-chat.allow-everyone"))           getConfig().set("discord-chat.allow-everyone",           true);
+            if (!getConfig().isSet("discord-chat.admin-role-name"))          getConfig().set("discord-chat.admin-role-name",          "Admin");
+            if (!getConfig().isSet("discord-chat.admin-role-id"))            getConfig().set("discord-chat.admin-role-id",            "");
+            if (!getConfig().isSet("discord-chat.format"))                   getConfig().set("discord-chat.format",                   "&7[&bDiscord&7] &b[{role}] {username}&7: &f{message}");
+            if (!getConfig().isSet("discord-chat.convert-discord-markdown")) getConfig().set("discord-chat.convert-discord-markdown", true);
+            if (!getConfig().isSet("discord-chat.display-roles"))            getConfig().set("discord-chat.display-roles",            java.util.Arrays.asList("Owner", "Manager", "Admin", "Mod", "Helper", "Support", "Flea"));
+
+            // auction-house section
+            if (!getConfig().isSet("auction-house.enabled"))    getConfig().set("auction-house.enabled",    true);
+            if (!getConfig().isSet("auction-house.server"))     getConfig().set("auction-house.server",     1);
+            if (!getConfig().isSet("auction-house.channel-id")) getConfig().set("auction-house.channel-id", "YOUR_AUCTION_CHANNEL_ID_HERE");
+
+            // link section
+            if (!getConfig().isSet("link.client-id"))       getConfig().set("link.client-id",      "YOUR_CLIENT_ID_HERE");
+            if (!getConfig().isSet("link.client-secret"))   getConfig().set("link.client-secret",  "YOUR_CLIENT_SECRET_HERE");
+            if (!getConfig().isSet("link.server-ip"))       getConfig().set("link.server-ip",       "YOUR_SERVER_IP_HERE");
+            if (!getConfig().isSet("link.port"))            getConfig().set("link.port",             4567);
+            if (!getConfig().isSet("link.server"))          getConfig().set("link.server",           1);
+            if (!getConfig().isSet("link.rank-role-names")) getConfig().set("link.rank-role-names", java.util.Arrays.asList("Axolotl", "Lizard", "Flea"));
+
+            // servers section
+            if (!getConfig().isSet("servers.1.guild-id")) getConfig().set("servers.1.guild-id", "YOUR_GUILD_ID_HERE");
+            if (!getConfig().isSet("servers.2.guild-id")) getConfig().set("servers.2.guild-id", "YOUR_SECOND_GUILD_ID_HERE");
+
+            // punishments section
+            if (!getConfig().isSet("punishments.enabled"))    getConfig().set("punishments.enabled",    false);
+            if (!getConfig().isSet("punishments.server"))     getConfig().set("punishments.server",     1);
+            if (!getConfig().isSet("punishments.channel-id")) getConfig().set("punishments.channel-id", "CHANNEL_ID_HERE");
+
+            // join-leave section
+            if (!getConfig().isSet("join-leave.enabled"))      getConfig().set("join-leave.enabled",      true);
+            if (!getConfig().isSet("join-leave.server"))       getConfig().set("join-leave.server",       1);
+            if (!getConfig().isSet("join-leave.channel-id"))   getConfig().set("join-leave.channel-id",   oldChannelId.isEmpty() ? "YOUR_CHANNEL_ID_HERE" : oldChannelId);
+            if (!getConfig().isSet("join-leave.join-format"))  getConfig().set("join-leave.join-format",  ":green_circle: **{player}** joined the server.");
+            if (!getConfig().isSet("join-leave.leave-format")) getConfig().set("join-leave.leave-format", ":red_circle: **{player}** left the server.");
+
+            // afk section
+            if (!getConfig().isSet("afk.enabled"))     getConfig().set("afk.enabled",    true);
+            if (!getConfig().isSet("afk.server"))      getConfig().set("afk.server",     1);
+            if (!getConfig().isSet("afk.channel-id"))  getConfig().set("afk.channel-id", oldChannelId.isEmpty() ? "YOUR_CHANNEL_ID_HERE" : oldChannelId);
+            if (!getConfig().isSet("afk.afk-format"))  getConfig().set("afk.afk-format",  ":zzz: **{player}** is now AFK.");
+            if (!getConfig().isSet("afk.back-format")) getConfig().set("afk.back-format", ":wave: **{player}** is no longer AFK.");
+
+            // server-messages section
+            if (!getConfig().isSet("server-messages.enabled"))        getConfig().set("server-messages.enabled",        true);
+            if (!getConfig().isSet("server-messages.server"))         getConfig().set("server-messages.server",         1);
+            if (!getConfig().isSet("server-messages.channel-id"))     getConfig().set("server-messages.channel-id",     oldChannelId.isEmpty() ? "YOUR_CHANNEL_ID_HERE" : oldChannelId);
+            if (!getConfig().isSet("server-messages.relay-prefixes")) getConfig().set("server-messages.relay-prefixes", java.util.Arrays.asList("[MiniGame]", "[Trivia]", "[Quiz]", "[Event]"));
+            if (!getConfig().isSet("server-messages.discord-format")) getConfig().set("server-messages.discord-format", ":game_die: {message}");
+
+            getConfig().set("config-version", 1);
+            dirty = true;
+            getLogger().info("Config migrated to version 1.");
+        }
+
+        // Future versions go here as additional if blocks:
+        // if (version < 2) { ... getConfig().set("config-version", 2); dirty = true; }
+
+        if (dirty) saveConfig();
     }
 
     private void setupVault() {

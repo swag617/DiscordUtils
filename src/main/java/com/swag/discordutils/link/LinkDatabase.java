@@ -23,7 +23,7 @@ public class LinkDatabase {
         }
     }
 
-    public void link(UUID uuid, String discordId) throws SQLException {
+    public synchronized void link(UUID uuid, String discordId) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
                 "INSERT OR REPLACE INTO links (uuid, discord_id) VALUES (?, ?)")) {
             ps.setString(1, uuid.toString());
@@ -32,7 +32,7 @@ public class LinkDatabase {
         }
     }
 
-    public void unlink(UUID uuid) throws SQLException {
+    public synchronized void unlink(UUID uuid) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
                 "DELETE FROM links WHERE uuid = ?")) {
             ps.setString(1, uuid.toString());
@@ -40,7 +40,7 @@ public class LinkDatabase {
         }
     }
 
-    public String getDiscordId(UUID uuid) throws SQLException {
+    public synchronized String getDiscordId(UUID uuid) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
                 "SELECT discord_id FROM links WHERE uuid = ?")) {
             ps.setString(1, uuid.toString());
@@ -50,7 +50,7 @@ public class LinkDatabase {
         }
     }
 
-    public UUID getMinecraftUUID(String discordId) throws SQLException {
+    public synchronized UUID getMinecraftUUID(String discordId) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
                 "SELECT uuid FROM links WHERE discord_id = ?")) {
             ps.setString(1, discordId);
@@ -60,7 +60,7 @@ public class LinkDatabase {
         }
     }
 
-    public void close() {
+    public synchronized void close() {
         try { conn.close(); } catch (SQLException ignored) {}
     }
 }
