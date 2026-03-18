@@ -82,8 +82,8 @@ public class FormattingUtil {
             text = text.replace("<" + e.getKey() + ">", e.getValue());
         }
 
-        // Remove any leftover unknown MiniMessage tags
-        text = text.replaceAll("</?[a-zA-Z_:#0-9]+>", "");
+        // Remove any leftover unknown MiniMessage tags (including Adventure negation <!tag>)
+        text = text.replaceAll("<[/!#]*[a-zA-Z_:#0-9!][^>]*>", "");
 
         return text;
     }
@@ -98,11 +98,12 @@ public class FormattingUtil {
         text = STRIP_SECTION.matcher(text).replaceAll("");
         // Strip & color codes (e.g. from Vault prefixes: &a, &c, &l)
         text = STRIP_AMPERSAND.matcher(text).replaceAll("");
-        // Strip any remaining MiniMessage/hex tags
+        // Strip any remaining MiniMessage/hex tags — including Adventure negation tags like
+        // <!underlined>, </!bold>, <#8ee6e3>, <color:#RRGGBB>, etc.
         text = HEX_HASH.matcher(text).replaceAll("");
         text = HEX_TAG.matcher(text).replaceAll("");
         text = HEX_COLOR_TAG.matcher(text).replaceAll("");
-        text = text.replaceAll("</?[a-zA-Z_:#0-9]+>", "");
+        text = text.replaceAll("<[/!#]*[a-zA-Z_:#0-9!][^>]*>", "");
         return text;
     }
 

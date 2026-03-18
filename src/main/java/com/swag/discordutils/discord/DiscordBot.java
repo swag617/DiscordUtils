@@ -111,6 +111,59 @@ public class DiscordBot {
     }
 
     /**
+     * Sends a plain-text staff chat message to the staff chat Discord channel.
+     * Reads staff-chat.server and staff-chat.channel-id at send-time.
+     */
+    public void sendStaffChatText(String text) {
+        if (!ready || jda == null) {
+            plugin.getLogger().warning("[StaffChat] Bot is not ready yet — message not sent.");
+            return;
+        }
+
+        int serverNumber = plugin.getConfig().getInt("staff-chat.server", 1);
+        String channelId = plugin.getConfig().getString("staff-chat.channel-id", "");
+        if (channelId.isEmpty() || channelId.equals("YOUR_STAFF_CHANNEL_ID_HERE")) {
+            plugin.getLogger().warning("[StaffChat] staff-chat.channel-id is not configured in config.yml.");
+            return;
+        }
+
+        TextChannel channel = getTextChannel(serverNumber, channelId);
+        if (channel == null) {
+            plugin.getLogger().warning("[StaffChat] Could not resolve staff chat channel (server=" + serverNumber + ", channel-id=" + channelId + "). Check servers." + serverNumber + ".guild-id and that the channel ID is correct.");
+            return;
+        }
+
+        channel.sendMessage(text).queue(
+                null,
+                err -> plugin.getLogger().warning("Failed to send staff chat message to Discord: " + err.getMessage())
+        );
+    }
+
+    /**
+     * Sends a staff chat message as a Discord embed with a rendered item tooltip image attached.
+     */
+    public void sendStaffChatItemEmbed(String messageText, byte[] tooltipImage) {
+        if (!ready || jda == null) return;
+
+        int serverNumber = plugin.getConfig().getInt("staff-chat.server", 1);
+        String channelId = plugin.getConfig().getString("staff-chat.channel-id", "");
+        if (channelId.isEmpty() || channelId.equals("YOUR_STAFF_CHANNEL_ID_HERE")) return;
+
+        TextChannel channel = getTextChannel(serverNumber, channelId);
+        if (channel == null) return;
+
+        var embed = new EmbedBuilder()
+                .setDescription(messageText)
+                .setImage("attachment://tooltip.png")
+                .setColor(new Color(0xED, 0x42, 0x45)) // red tint for staff
+                .build();
+
+        channel.sendMessageEmbeds(embed)
+                .addFiles(FileUpload.fromData(tooltipImage, "tooltip.png"))
+                .queue(null, err -> plugin.getLogger().warning("Failed to send staff chat item embed: " + err.getMessage()));
+    }
+
+    /**
      * Sends a plain-text message to the server-messages channel.
      * Reads server-messages.server and server-messages.channel-id at send-time.
      */

@@ -10,6 +10,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.server.BroadcastMessageEvent;
+import org.bukkit.metadata.MetadataValue;
 
 import java.util.List;
 
@@ -27,15 +28,55 @@ public class ServerEventListener implements Listener {
     // MONITOR priority so we see the event after other plugins have processed it
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+
+        // Skip vanished players — SuperVanish, PremiumVanish, CMI vanish, and most other
+        // vanish plugins set a "vanished" metadata key on the player when they are hidden.
+        if (isVanished(player)) return;
+
         if (plugin.getConfig().getBoolean("join-leave.enabled", true)) {
             plugin.getDiscordBot().sendJoinLeaveEmbed(
-                    event.getPlayer().getName(), event.getPlayer().getUniqueId(), true);
+                    player.getName(), player.getUniqueId(), true);
         }
 
         // Sync Discord role to match current LuckPerms group (runs async)
         if (plugin.getLinkManager() != null) {
-            plugin.getLinkManager().syncRoleAsync(event.getPlayer());
+            plugin.getLinkManager().syncRoleAsync(player);
         }
+    }
+
+    /**
+     * Returns true if the player is currently vanished.
+     *
+     * Detection strategy (in order):
+     *  1. "vanished" metadata key (boolean true) — used by SuperVanish, PremiumVanish,
+     *     CMI vanish, EssentialsX vanish, and most other vanish plugins.
+     *  2. CMI API check via CMIUser.isVanished() — catches edge cases where CMI has not
+     *     yet set metadata at the moment MONITOR fires (rare race condition on first join).
+     *
+     * This intentionally avoids permission checks because permission nodes vary widely
+     * between plugins and checking them would produce false positives.
+     */
+    private boolean isVanished(Player player) {
+        // Check metadata key — the universal convention used by most vanish plugins
+        for (MetadataValue meta : player.getMetadata("vanished")) {
+            if (meta.asBoolean()) return true;
+        }
+
+        // CMI fallback — use its API directly if CMI is loaded
+        if (cmiPresent) {
+            try {
+                com.Zrips.CMI.CMI cmi = com.Zrips.CMI.CMI.getInstance();
+                if (cmi != null) {
+                    com.Zrips.CMI.Containers.CMIUser user = cmi.getPlayerManager().getUser(player);
+                    if (user != null && user.isVanished()) return true;
+                }
+            } catch (Exception e) {
+                // CMI API unavailable or changed — silently ignore, metadata check was already done
+            }
+        }
+
+        return false;
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -69,6 +110,7 @@ public class ServerEventListener implements Listener {
         // When CMI is installed, CmiAfkListener handles AFK via its own events — skip here
         // to avoid sending duplicate embeds for every CMI AFK broadcast.
         if (!cmiPresent) checkAfk(plain);
+        checkStaffChat(plain);
         checkServerMessage(plain);
     }
 
@@ -98,6 +140,20 @@ public class ServerEventListener implements Listener {
                 return;
             }
         }
+    }
+
+    private void checkStaffChat(String plain) {
+        if (!plugin.getConfig().getBoolean("staff-chat.enabled", true)) return;
+
+        List<String> prefixes = plugin.getConfig().getStringList("staff-chat.relay-prefixes");
+        if (prefixes.isEmpty()) return;
+
+        boolean relay = prefixes.contains("*") ||
+                prefixes.stream().anyMatch(plain::startsWith);
+        if (!relay) return;
+
+        String format = plugin.getConfig().getString("staff-chat.discord-format", ":shield: {message}");
+        plugin.getDiscordBot().sendStaffChatText(format.replace("{message}", plain));
     }
 
     private void checkServerMessage(String plain) {

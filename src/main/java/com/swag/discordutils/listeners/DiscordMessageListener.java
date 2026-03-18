@@ -1,6 +1,7 @@
 package com.swag.discordutils.listeners;
 
 import com.swag.discordutils.DiscordUtils;
+import com.swag.discordutils.commands.StaffChatCommand;
 import com.swag.discordutils.link.LinkManager;
 import com.swag.discordutils.util.FormattingUtil;
 import net.dv8tion.jda.api.entities.Member;
@@ -42,9 +43,44 @@ public class DiscordMessageListener extends ListenerAdapter {
         // Only handle guild (server) text channel messages
         if (!event.isFromGuild()) return;
 
+        String incomingChannelId = event.getChannel().getId();
+
+        // Check if this message came from the staff chat channel — handle it before the
+        // normal chat channel check so a channel that is configured for both (unlikely but
+        // possible) still routes correctly. Staff messages are only shown to staff players.
+        String staffChannelId = plugin.getConfig().getString("staff-chat.channel-id", "");
+        if (plugin.getConfig().getBoolean("staff-chat.enabled", true)
+                && !staffChannelId.isEmpty()
+                && !staffChannelId.equals("YOUR_STAFF_CHANNEL_ID_HERE")
+                && incomingChannelId.equals(staffChannelId)) {
+
+            String rawContent = event.getMessage().getContentDisplay();
+            if (!rawContent.isEmpty()) {
+                if (plugin.getConfig().getBoolean("discord-chat.convert-discord-markdown", true)) {
+                    rawContent = FormattingUtil.discordToMinecraft(rawContent);
+                }
+                String username = getDisplayName(event.getMember(), event.getAuthor().getName());
+                String role     = getHighestRole(event.getMember());
+                String format   = plugin.getConfig().getString(
+                        "staff-chat.discord-to-minecraft-format",
+                        "&c[Staff Discord] &f[{role}] {username}&7: &f{message}");
+                String message = format
+                        .replace("{username}", username)
+                        .replace("{role}", role)
+                        .replace("{message}", rawContent);
+                message = FormattingUtil.parseMiniMessage(message);
+
+                final String finalMessage = message;
+                // JDA fires on its own thread — dispatch to the main thread for Bukkit API access
+                Bukkit.getScheduler().runTask(plugin,
+                        () -> StaffChatCommand.broadcastToStaff(plugin, finalMessage));
+            }
+            return; // do not fall through to the normal chat relay
+        }
+
         // Only handle the configured chat channel
         String channelId = plugin.getConfig().getString("chat.channel-id", "");
-        if (!event.getChannel().getId().equals(channelId)) return;
+        if (!incomingChannelId.equals(channelId)) return;
 
         if (!plugin.getConfig().getBoolean("discord-chat.enabled", true)) return;
 

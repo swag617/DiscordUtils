@@ -16,6 +16,7 @@ The auction house integration logs listing, sale, and removal events from zAucti
 ```yaml
 auction-house:
   enabled: true
+  server: 1
   channel-id: "YOUR_AUCTION_CHANNEL_ID_HERE"
 ```
 
@@ -27,14 +28,12 @@ auction-house:
 
 Four event types are logged, each with a distinct embed color and badge icon:
 
-| Event | Embed color | Badge | Triggered by |
-|---|---|---|---|
-| New Listing | Yellow | Star | Player lists an item |
-| Item Sold | Green | Checkmark | Player purchases a listing |
-| Listing Removed | Red | X | Seller removes their own listing |
-| Listing Removed by Admin | Red | Warning | Admin force-removes a listing |
-
-`AuctionRemoveEvent` with `StorageType.BUY` is ignored — that case is already covered by `AuctionPostBuyEvent` (the Item Sold embed).
+| Event | Embed color | Badge | API event | Triggered by |
+|---|---|---|---|---|
+| New Listing | Yellow | Star | `AuctionPreSellEvent` | Player lists an item |
+| Item Sold | Green | Checkmark | `AuctionPrePurchaseItemEvent` | Fires at the point of purchase |
+| Listing Removed | Red | X | `AuctionRemoveListedItemEvent` | Seller manually removes their listing |
+| Listing Expired | Gray | Clock | `AuctionRemoveExpiredItemEvent` | Listing expires without a sale |
 
 ---
 
@@ -47,7 +46,6 @@ Four event types are logged, each with a distinct embed color and badge icon:
 | Price | All events |
 | Seller | All events |
 | Buyer | Item Sold only |
-| Removed By | Admin Remove only |
 
 If the item has no custom display name, **Item Name** falls back to the material name.
 
@@ -56,6 +54,7 @@ If the item has no custom display name, **Item Name** falls back to the material
 ## Limitations
 
 - zAuctionHouse does not fire an event when a listing's price is changed, so **price changes are not logged**.
+- If zAuctionHouse's rules engine denies a listing (e.g. a minimum price rule), the listing event (`AuctionPreSellEvent`) may still fire and log to Discord before the denial is processed. The item will appear in the Discord log even though the listing was ultimately rejected.
 - If the bot is not connected when an event fires, the embed is silently dropped.
 
 ---

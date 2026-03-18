@@ -1,5 +1,5 @@
 name: DiscordUtils
-version: 1.0
+version: 1.1
 main: com.swag.discordutils.DiscordUtils
 api-version: 1.20
 description: Standalone Discord bot plugin - bridges Minecraft chat with Discord via JDA.
@@ -25,7 +25,6 @@ commands:
     description: Unlink your Minecraft account from Discord.
     usage: /discordunlink
     permission: discordutils.link
-
 permissions:
   discordutils.admin:
     description: Allows use of /discordchat command.
@@ -36,3 +35,6 @@ permissions:
   discordutils.formatting:
     description: Allows use of MiniMessage/hex formatting in chat.
     default: true
+  discordutils.staffchat:
+    description: Allows use of /sc and /staffchat, and receive in-game staff Discord messages.
+    default: op

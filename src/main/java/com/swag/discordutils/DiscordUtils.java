@@ -48,6 +48,7 @@ public class DiscordUtils extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PunishmentsListener(this), this);
         setupAfkListener();
         setupAuctionHouseListener();
+        setupStaffChatBridgeListener();
 
         DiscordChatCommand cmd = new DiscordChatCommand(this);
         getCommand("discordchat").setExecutor(cmd);
@@ -80,10 +81,24 @@ public class DiscordUtils extends JavaPlugin {
                     return name.contains("auctionhouse") || name.contains("auction") || name.equals("ah");
                 });
         if (found) {
-            getServer().getPluginManager().registerEvents(new AuctionHouseListener(this), this);
-            getLogger().info("Auction House plugin detected - auction logging enabled.");
+            try {
+                getServer().getPluginManager().registerEvents(new AuctionHouseListener(this), this);
+                getLogger().info("Auction House plugin detected - auction logging enabled.");
+            } catch (Exception e) {
+                getLogger().warning("Could not register AuctionHouseListener: " + e.getMessage());
+            }
         } else {
             getLogger().info("No Auction House plugin found - auction logging disabled.");
+        }
+    }
+
+    private void setupStaffChatBridgeListener() {
+        try {
+            Class.forName("dev.pace.staffchat.StaffChat");
+            getServer().getPluginManager().registerEvents(new com.swag.discordutils.listeners.StaffChatBridgeListener(this), this);
+            getLogger().info("StaffChat detected - staff chat Discord bridge enabled.");
+        } catch (ClassNotFoundException ignored) {
+            // StaffChat not present — staff chat relay uses broadcast detection as fallback.
         }
     }
 
@@ -205,8 +220,35 @@ public class DiscordUtils extends JavaPlugin {
             getLogger().info("Config migrated to version 1.");
         }
 
+        if (version < 2) {
+            // Version 2 — staff chat system.
+            if (!getConfig().isSet("staff-chat.enabled"))                      getConfig().set("staff-chat.enabled",                      true);
+            if (!getConfig().isSet("staff-chat.server"))                       getConfig().set("staff-chat.server",                       1);
+            if (!getConfig().isSet("staff-chat.channel-id"))                   getConfig().set("staff-chat.channel-id",                   "YOUR_STAFF_CHANNEL_ID_HERE");
+            if (!getConfig().isSet("staff-chat.permission"))                   getConfig().set("staff-chat.permission",                   "discordutils.staffchat");
+            if (!getConfig().isSet("staff-chat.minecraft-to-discord-format"))  getConfig().set("staff-chat.minecraft-to-discord-format",  "**[Staff] {player}**: {message}");
+            if (!getConfig().isSet("staff-chat.discord-to-minecraft-format"))  getConfig().set("staff-chat.discord-to-minecraft-format",  "&c[Staff Discord] &f[{role}] {username}&7: &f{message}");
+
+            getConfig().set("config-version", 2);
+            dirty = true;
+            getLogger().info("Config migrated to version 2.");
+        }
+
+        if (version < 3) {
+            // Version 3 — broadcast-based staff chat relay (replaces /sc command approach).
+            if (!getConfig().isSet("staff-chat.relay-prefixes"))  getConfig().set("staff-chat.relay-prefixes",  java.util.Arrays.asList("[Staff]", "[SC]"));
+            if (!getConfig().isSet("staff-chat.discord-format"))   getConfig().set("staff-chat.discord-format",   ":shield: **[Staff] {player}**: {message}");
+            if (!getConfig().isSet("staff-chat.channel-type"))     getConfig().set("staff-chat.channel-type",     "staff");
+            // Remove keys that were only used by the old /sc command
+            getConfig().set("staff-chat.minecraft-to-discord-format", null);
+
+            getConfig().set("config-version", 3);
+            dirty = true;
+            getLogger().info("Config migrated to version 3.");
+        }
+
         // Future versions go here as additional if blocks:
-        // if (version < 2) { ... getConfig().set("config-version", 2); dirty = true; }
+        // if (version < 4) { ... getConfig().set("config-version", 4); dirty = true; }
 
         if (dirty) saveConfig();
     }

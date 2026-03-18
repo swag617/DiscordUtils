@@ -1,6 +1,6 @@
 # DiscordUtils Configuration
 # config-version - Do NOT change this value manually.
-config-version: 1
+config-version: 3
 # Set to true to log every caught broadcast to console - useful for diagnosing AFK/mini-game relay issues.
 debug: false
 # IMPORTANT: You must enable the "Message Content Intent" (Privileged Gateway Intent)
@@ -134,6 +134,30 @@ afk:
   # Placeholders: {player}
   afk-format: ":zzz: **{player}** is now AFK."
   back-format: ":wave: **{player}** is no longer AFK."
+
+# Staff chat bridge - relays in-game staff chat to a private Discord channel and back.
+# Supports StaffChat (dev.pace) natively. Falls back to broadcast prefix matching for other plugins.
+staff-chat:
+  enabled: true
+  # Which entry from the 'servers' map below this channel belongs to.
+  server: 1
+  # The Discord channel ID for the private staff channel.
+  channel-id: "YOUR_STAFF_CHANNEL_ID_HERE"
+  # Permission node used to filter who receives Discord → in-game staff messages.
+  permission: "discordutils.staffchat"
+  # (StaffChat plugin) Internal channel type string from StaffChat — leave as "staff" unless
+  # you have customized it. Run /sctoggle and check console to confirm.
+  channel-type: "staff"
+  # Format for messages sent TO Discord from in-game staff chat.
+  # Placeholders: {player}, {message}
+  discord-format: ":shield: **[Staff] {player}**: {message}"
+  # Format for messages coming FROM Discord to in-game (shown only to staff players).
+  # Placeholders: {role}, {username}, {message}
+  discord-to-minecraft-format: "&c[Staff Discord] &f[{role}] {username}&7: &f{message}"
+  # Fallback: if StaffChat plugin is not detected, relay broadcasts that start with these prefixes.
+  relay-prefixes:
+    - "[Staff]"
+    - "[SC]"
 
 # Relay server/plugin broadcast messages (e.g. mini-game events) to Discord.
 # BroadcastMessageEvent fires when Bukkit.broadcastMessage() is called by any plugin.

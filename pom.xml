@@ -6,7 +6,7 @@
 
     <groupId>com.swag</groupId>
     <artifactId>DiscordUtils</artifactId>
-    <version>1.0</version>
+    <version>1.1</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -39,7 +39,15 @@
             <artifactId>zAuctionHouse</artifactId>
             <version>local</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/libs/zAuctionHouse.jar</systemPath>
+            <systemPath>${project.basedir}/libs/zAuctionHouse-4.0.0.1.jar</systemPath>
+        </dependency>
+        <!-- StaffChat - soft dependency for staff chat Discord bridge -->
+        <dependency>
+            <groupId>dev.pace</groupId>
+            <artifactId>StaffChat</artifactId>
+            <version>local</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/libs/StaffChat.jar</systemPath>
         </dependency>
         <!-- CMI - soft dependency for AFK. Drop CMI.jar into libs/ (paid plugin, no public repo). -->
         <dependency>
@@ -61,6 +69,12 @@
             <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.45.1.0</version>
+        </dependency>
+        <!-- SLF4J NOP binding - silences SLF4J "no logger found" stderr messages from JDA -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-nop</artifactId>
+            <version>1.7.36</version>
         </dependency>
         <!-- JDA - standalone Discord bot library (no DiscordSRV needed) -->
         <dependency>

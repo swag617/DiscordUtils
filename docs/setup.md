@@ -55,7 +55,7 @@ Start the server once to generate the default config, then stop it and edit `plu
 
 ```yaml
 bot-token: "YOUR_BOT_TOKEN_HERE"
-channel-id: "YOUR_CHANNEL_ID_HERE"
+chat.channel-id: "YOUR_CHANNEL_ID_HERE"
 ```
 
 To get your channel ID: enable Developer Mode in Discord (**User Settings > Advanced > Developer Mode**), then right-click the channel and select **Copy Channel ID**.
@@ -80,7 +80,41 @@ See the inline comments in `config.yml` for every available option. The key sect
 | `afk` | AFK embed format |
 | `server-messages` | Broadcast relay prefix filter |
 | `auction-house` | Auction log channel and enable toggle |
+| `punishments` | Ban embed channel and enable toggle |
+| `staff-chat` | Staff chat bridge channel, formats, and permission |
 | `link` | OAuth2 credentials for account linking |
+
+---
+
+## Multi-server / Multi-guild setup
+
+DiscordUtils can post different event types to channels in different Discord guilds. Guilds are declared in a `servers` map at the top of `config.yml`:
+
+```yaml
+servers:
+  1:
+    guild-id: "111111111111111111"
+  2:
+    guild-id: "222222222222222222"
+```
+
+Each feature section then references one of these entries with a `server` key:
+
+```yaml
+chat:
+  server: 1
+  channel-id: "333333333333333333"
+
+punishments:
+  server: 2
+  channel-id: "444444444444444444"
+
+staff-chat:
+  server: 2
+  channel-id: "555555555555555555"
+```
+
+> **Note:** The bot must be invited to **every** guild listed in the `servers` map. Use the OAuth2 URL generator (see step 3 above) once per guild. If the bot is not a member of a guild it will fail to post to channels in that guild and log an error on startup.
 
 ---
 
