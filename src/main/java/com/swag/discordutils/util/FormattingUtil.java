@@ -12,6 +12,8 @@ public class FormattingUtil {
     private static final Pattern HEX_TAG = Pattern.compile("<#([A-Fa-f0-9]{6})>");
     // Matches <color:#RRGGBB> (MiniMessage long form)
     private static final Pattern HEX_COLOR_TAG = Pattern.compile("<color:#([A-Fa-f0-9]{6})>");
+    // Matches bare #RRGGBB hex codes (zAuctionHouse getItemDisplay() emits these without brackets)
+    private static final Pattern HEX_BARE = Pattern.compile("#[A-Fa-f0-9]{6}");
 
     // Strip §-based color/format codes (including hex §x§R§R§G§G§B§B)
     private static final Pattern STRIP_SECTION = Pattern.compile("§x(§[0-9a-fA-F]){6}|§[0-9a-fklmnorxA-FK-OR-X]");
@@ -104,6 +106,8 @@ public class FormattingUtil {
         text = HEX_TAG.matcher(text).replaceAll("");
         text = HEX_COLOR_TAG.matcher(text).replaceAll("");
         text = text.replaceAll("<[/!#]*[a-zA-Z_:#0-9!][^>]*>", "");
+        // Strip bare #RRGGBB codes last (after bracketed forms are already gone)
+        text = HEX_BARE.matcher(text).replaceAll("");
         return text;
     }
 

@@ -1,6 +1,6 @@
 # DiscordUtils Configuration
 # config-version - Do NOT change this value manually.
-config-version: 3
+config-version: 4
 # Set to true to log every caught broadcast to console - useful for diagnosing AFK/mini-game relay issues.
 debug: false
 # IMPORTANT: You must enable the "Message Content Intent" (Privileged Gateway Intent)
@@ -176,3 +176,27 @@ server-messages:
     - "[Event]"
   # Format sent to Discord. Placeholders: {message}
   discord-format: ":game_die: {message}"
+
+# Bot presence and chat channel topic — shows live player count in Discord.
+presence:
+  enabled: true
+  # Bot activity shown under its name in Discord. Placeholders: {online}, {max}
+  format: "{online}/{max} players online"
+  # Also update the chat channel's topic with the player count on join/leave.
+  # Note: Discord rate-limits topic edits (~2 per 10 minutes). Rapid bursts queue and apply the latest value.
+  update-chat-topic: true
+  topic-format: "{online}/{max} players online"
+
+# /discord in-game command — sends a clickable Discord invite link.
+# Disabled by default to avoid conflicting with other /discord commands.
+discord-invite:
+  enabled: false
+  url: "YOUR_INVITE_HERE"
+
+# Death messages — relays player death messages to a Discord channel.
+deaths:
+  enabled: false
+  server: 1
+  channel-id: "YOUR_CHANNEL_ID_HERE"
+  # Placeholders: {message} = the full vanilla death message (e.g. "Steve was slain by Zombie")
+  format: ":skull: {message}"

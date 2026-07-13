@@ -1,12 +1,14 @@
 package com.swag.discordutils;
 
 import com.swag.discordutils.commands.DiscordChatCommand;
+import com.swag.discordutils.commands.DiscordCommand;
 import com.swag.discordutils.commands.DiscordLinkCommand;
 import com.swag.discordutils.commands.DiscordUnlinkCommand;
 import com.swag.discordutils.discord.DiscordBot;
 import com.swag.discordutils.link.LinkDatabase;
 import com.swag.discordutils.link.LinkHttpServer;
 import com.swag.discordutils.link.LinkManager;
+import com.swag.discordutils.listeners.DeathListener;
 import com.swag.discordutils.listeners.DiscordMessageListener;
 import com.swag.discordutils.listeners.AuctionHouseListener;
 import com.swag.discordutils.listeners.CmiAfkListener;
@@ -46,6 +48,7 @@ public class DiscordUtils extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new MinecraftChatListener(this), this);
         getServer().getPluginManager().registerEvents(new ServerEventListener(this), this);
         getServer().getPluginManager().registerEvents(new PunishmentsListener(this), this);
+        getServer().getPluginManager().registerEvents(new DeathListener(this), this);
         setupAfkListener();
         setupAuctionHouseListener();
         setupStaffChatBridgeListener();
@@ -56,6 +59,13 @@ public class DiscordUtils extends JavaPlugin {
 
         getCommand("discordlink").setExecutor(new DiscordLinkCommand(this));
         getCommand("discordunlink").setExecutor(new DiscordUnlinkCommand(this));
+
+        if (getConfig().getBoolean("discord-invite.enabled", false)) {
+            DiscordCommand discordCmd = new DiscordCommand(this);
+            if (getCommand("discord") != null) {
+                getCommand("discord").setExecutor(discordCmd);
+            }
+        }
 
         getLogger().info("DiscordUtils enabled.");
     }
@@ -247,8 +257,28 @@ public class DiscordUtils extends JavaPlugin {
             getLogger().info("Config migrated to version 3.");
         }
 
+        if (version < 4) {
+            // Version 4 — presence/topic updates, /discord invite command, death messages.
+            if (!getConfig().isSet("presence.enabled"))            getConfig().set("presence.enabled",            true);
+            if (!getConfig().isSet("presence.format"))              getConfig().set("presence.format",              "{online}/{max} players online");
+            if (!getConfig().isSet("presence.update-chat-topic"))   getConfig().set("presence.update-chat-topic",   true);
+            if (!getConfig().isSet("presence.topic-format"))        getConfig().set("presence.topic-format",        "{online}/{max} players online");
+
+            if (!getConfig().isSet("discord-invite.enabled")) getConfig().set("discord-invite.enabled", false);
+            if (!getConfig().isSet("discord-invite.url"))     getConfig().set("discord-invite.url",     "YOUR_INVITE_HERE");
+
+            if (!getConfig().isSet("deaths.enabled"))    getConfig().set("deaths.enabled",    false);
+            if (!getConfig().isSet("deaths.server"))     getConfig().set("deaths.server",     1);
+            if (!getConfig().isSet("deaths.channel-id")) getConfig().set("deaths.channel-id", "YOUR_CHANNEL_ID_HERE");
+            if (!getConfig().isSet("deaths.format"))     getConfig().set("deaths.format",     ":skull: {message}");
+
+            getConfig().set("config-version", 4);
+            dirty = true;
+            getLogger().info("Config migrated to version 4.");
+        }
+
         // Future versions go here as additional if blocks:
-        // if (version < 4) { ... getConfig().set("config-version", 4); dirty = true; }
+        // if (version < 5) { ... getConfig().set("config-version", 5); dirty = true; }
 
         if (dirty) saveConfig();
     }

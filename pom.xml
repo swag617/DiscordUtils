@@ -6,7 +6,7 @@
 
     <groupId>com.swag</groupId>
     <artifactId>DiscordUtils</artifactId>
-    <version>1.1</version>
+    <version>1.2-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -23,6 +23,10 @@
         <repository>
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
+        </repository>
+        <repository>
+            <id>luckperms-repo</id>
+            <url>https://repo.luckperms.net/repository/everything/</url>
         </repository>
     </repositories>
 
@@ -62,6 +66,13 @@
             <groupId>com.github.MilkBowl</groupId>
             <artifactId>VaultAPI</artifactId>
             <version>1.7</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- LuckPerms API - soft dependency for direct group lookup (bypasses Vault formatting issues) -->
+        <dependency>
+            <groupId>net.luckperms</groupId>
+            <artifactId>api</artifactId>
+            <version>5.4</version>
             <scope>provided</scope>
         </dependency>
         <!-- SQLite - persistent storage for Discord <-> Minecraft account links -->

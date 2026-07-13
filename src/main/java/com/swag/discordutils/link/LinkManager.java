@@ -42,6 +42,10 @@ public class LinkManager {
         this.plugin = plugin;
         this.db = db;
         this.httpClient = HttpClient.newHttpClient();
+        // Purge expired pending link entries every 5 minutes to prevent unbounded map growth.
+        plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin,
+                () -> pending.entrySet().removeIf(e -> e.getValue().isExpired()),
+                6000L, 6000L);
     }
 
     /**
@@ -267,6 +271,21 @@ public class LinkManager {
     }
 
     private String getPlayerGroup(UUID playerUuid) {
+        // LuckPerms API is the most reliable source — it returns the raw technical group name
+        // with no formatting codes or placeholder strings. Vault Chat bridges can return
+        // format/placeholder strings (e.g. "%") when display-name metadata is configured.
+        try {
+            net.luckperms.api.LuckPerms lp = net.luckperms.api.LuckPermsProvider.get();
+            net.luckperms.api.model.user.User user = lp.getUserManager().getUser(playerUuid);
+            if (user != null) {
+                String group = user.getPrimaryGroup();
+                if (group != null && !group.isBlank()) return group;
+            }
+        } catch (IllegalStateException ignored) {
+            // LuckPerms not loaded — fall through to Vault
+        }
+
+        // Vault fallback (used when LuckPerms isn't present or user data isn't loaded)
         Chat chat = plugin.getVaultChat();
         if (chat == null) return null;
 
@@ -275,7 +294,6 @@ public class LinkManager {
             return chat.getPrimaryGroup(online);
         }
 
-        // Offline player fallback
         OfflinePlayer offline = Bukkit.getOfflinePlayer(playerUuid);
         try {
             return chat.getPrimaryGroup(null, offline);

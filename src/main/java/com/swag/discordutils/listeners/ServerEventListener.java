@@ -43,6 +43,9 @@ public class ServerEventListener implements Listener {
         if (plugin.getLinkManager() != null) {
             plugin.getLinkManager().syncRoleAsync(player);
         }
+
+        plugin.getDiscordBot().updatePresence();
+        plugin.getDiscordBot().updateChatChannelTopic();
     }
 
     /**
@@ -81,9 +84,13 @@ public class ServerEventListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerQuit(PlayerQuitEvent event) {
-        if (!plugin.getConfig().getBoolean("join-leave.enabled", true)) return;
-        plugin.getDiscordBot().sendJoinLeaveEmbed(
-                event.getPlayer().getName(), event.getPlayer().getUniqueId(), false);
+        if (isVanished(event.getPlayer())) return;
+        if (plugin.getConfig().getBoolean("join-leave.enabled", true)) {
+            plugin.getDiscordBot().sendJoinLeaveEmbed(
+                    event.getPlayer().getName(), event.getPlayer().getUniqueId(), false);
+        }
+        plugin.getDiscordBot().updatePresence();
+        plugin.getDiscordBot().updateChatChannelTopic();
     }
 
     /**
@@ -132,9 +139,10 @@ public class ServerEventListener implements Listener {
 
         if (!goingAfk && !returning) return;
 
-        // Find which online player this message is about by scanning for their name
+        // Find which online player this message is about by scanning for their name.
+        // Use a word-boundary regex to prevent "Dan" from matching "Danger" etc.
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (plain.contains(player.getName())) {
+            if (plain.matches("(?i).*\\b" + java.util.regex.Pattern.quote(player.getName()) + "\\b.*")) {
                 plugin.getDiscordBot().sendAfkEmbed(
                         player.getName(), player.getUniqueId(), goingAfk);
                 return;

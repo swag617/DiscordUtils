@@ -1,11 +1,12 @@
 name: DiscordUtils
-version: 1.1
+version: 1.2
 main: com.swag.discordutils.DiscordUtils
 api-version: 1.20
 description: Standalone Discord bot plugin - bridges Minecraft chat with Discord via JDA.
 
 softdepend:
   - Vault
+  - LuckPerms
   - CMI
   - zAuctionHouse
   - AuctionHouse
@@ -25,6 +26,10 @@ commands:
     description: Unlink your Minecraft account from Discord.
     usage: /discordunlink
     permission: discordutils.link
+  discord:
+    description: Get the Discord invite link.
+    usage: /discord
+    permission: discordutils.discord
 permissions:
   discordutils.admin:
     description: Allows use of /discordchat command.
@@ -38,3 +43,6 @@ permissions:
   discordutils.staffchat:
     description: Allows use of /sc and /staffchat, and receive in-game staff Discord messages.
     default: op
+  discordutils.discord:
+    description: Allows use of /discord command.
+    default: true

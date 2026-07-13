@@ -3,7 +3,7 @@ package com.swag.discordutils.discord;
 import com.swag.discordutils.DiscordUtils;
 import com.swag.discordutils.listeners.AuctionHouseListener.AuctionAction;
 import com.swag.discordutils.util.AuctionBadgeRenderer;
-import net.dv8tion.jda.api.EmbedBuilder;
+import com.swag.discordutils.util.CleanEmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
@@ -56,6 +56,8 @@ public class DiscordBot {
                     if (plugin.getConfig().getBoolean("announce-status", true)) {
                         sendMessage(":white_check_mark: **DiscordUtils** is now online.");
                     }
+                    updatePresence();
+                    updateChatChannelTopic();
                 }
             });
 
@@ -152,7 +154,7 @@ public class DiscordBot {
         TextChannel channel = getTextChannel(serverNumber, channelId);
         if (channel == null) return;
 
-        var embed = new EmbedBuilder()
+        var embed = new CleanEmbedBuilder()
                 .setDescription(messageText)
                 .setImage("attachment://tooltip.png")
                 .setColor(new Color(0xED, 0x42, 0x45)) // red tint for staff
@@ -209,7 +211,7 @@ public class DiscordBot {
         // Green for join, red for leave - matching Discord's status colours
         Color color = joined ? new Color(0x57, 0xF2, 0x87) : new Color(0xED, 0x42, 0x45);
 
-        var embed = new EmbedBuilder()
+        var embed = new CleanEmbedBuilder()
                 .setDescription(description)
                 .setThumbnail(headUrl)
                 .setColor(color)
@@ -247,7 +249,7 @@ public class DiscordBot {
         // Yellow for going AFK, light blue for returning
         Color color = goingAfk ? new Color(0xFF, 0xD7, 0x00) : new Color(0x00, 0xB0, 0xFF);
 
-        var embed = new EmbedBuilder()
+        var embed = new CleanEmbedBuilder()
                 .setDescription(description)
                 .setThumbnail(headUrl)
                 .setColor(color)
@@ -277,7 +279,7 @@ public class DiscordBot {
         TextChannel channel = getTextChannel(serverNumber, channelId);
         if (channel == null) return;
 
-        var embed = new EmbedBuilder()
+        var embed = new CleanEmbedBuilder()
                 .setAuthor("Item Display")
                 .setDescription(messageText)
                 .setImage("attachment://tooltip.png")
@@ -335,13 +337,12 @@ public class DiscordBot {
         }
 
         String priceFormatted = String.format("%,d", price);
-        String amountAndMaterial = amount + "x " + material;
+        String itemDisplay = amount + "x " + ((itemName == null || itemName.isEmpty()) ? material : itemName);
 
-        EmbedBuilder embed = new EmbedBuilder()
+        var embed = new CleanEmbedBuilder()
                 .setTitle(title)
                 .setColor(color)
-                .addField("Item Name", itemName.isEmpty() ? material : itemName, true)
-                .addField("Amount & Material", amountAndMaterial, true)
+                .addField("Item", itemDisplay, true)
                 .addField("Price", priceFormatted, true)
                 .addField("Seller", sellerName, true)
                 .setTimestamp(java.time.Instant.now());
@@ -363,6 +364,64 @@ public class DiscordBot {
         msg.queue(
                 null,
                 err -> plugin.getLogger().warning("Failed to send auction embed: " + err.getMessage())
+        );
+    }
+
+    /**
+     * Updates the bot's Discord presence activity with the current online player count.
+     */
+    public void updatePresence() {
+        if (!ready || jda == null) return;
+        if (!plugin.getConfig().getBoolean("presence.enabled", true)) return;
+        int online = plugin.getServer().getOnlinePlayers().size();
+        int max    = plugin.getServer().getMaxPlayers();
+        String format = plugin.getConfig().getString("presence.format", "{online}/{max} players online")
+                .replace("{online}", String.valueOf(online))
+                .replace("{max}", String.valueOf(max));
+        jda.getPresence().setActivity(net.dv8tion.jda.api.entities.Activity.watching(format));
+    }
+
+    /**
+     * Updates the chat channel's topic with the current online player count.
+     * Discord rate-limits topic edits (~2 per 10 minutes); rapid bursts queue and apply the latest value.
+     */
+    public void updateChatChannelTopic() {
+        if (!ready || jda == null) return;
+        if (!plugin.getConfig().getBoolean("presence.update-chat-topic", true)) return;
+        int online = plugin.getServer().getOnlinePlayers().size();
+        int max    = plugin.getServer().getMaxPlayers();
+        String topic = plugin.getConfig().getString("presence.topic-format", "{online}/{max} players online")
+                .replace("{online}", String.valueOf(online))
+                .replace("{max}", String.valueOf(max));
+        int serverNumber = plugin.getConfig().getInt("chat.server", 1);
+        String channelId = plugin.getConfig().getString("chat.channel-id", "");
+        if (channelId.isEmpty() || channelId.equals("YOUR_CHANNEL_ID_HERE")) return;
+        TextChannel channel = getTextChannel(serverNumber, channelId);
+        if (channel == null) return;
+        channel.getManager().setTopic(topic).queue(
+            null,
+            err -> plugin.getLogger().warning("Failed to update chat channel topic: " + err.getMessage())
+        );
+    }
+
+    /**
+     * Sends a death message to the configured deaths channel.
+     *
+     * @param message the plain-text vanilla death message (formatting already stripped)
+     */
+    public void sendDeathMessage(String message) {
+        if (!ready || jda == null) return;
+        if (!plugin.getConfig().getBoolean("deaths.enabled", false)) return;
+        int serverNumber = plugin.getConfig().getInt("deaths.server", 1);
+        String channelId = plugin.getConfig().getString("deaths.channel-id", "");
+        if (channelId.isEmpty() || channelId.equals("YOUR_CHANNEL_ID_HERE")) return;
+        TextChannel channel = getTextChannel(serverNumber, channelId);
+        if (channel == null) return;
+        String format = plugin.getConfig().getString("deaths.format", ":skull: {message}")
+                .replace("{message}", message);
+        channel.sendMessage(format).queue(
+            null,
+            err -> plugin.getLogger().warning("Failed to send death message: " + err.getMessage())
         );
     }
 
@@ -430,7 +489,7 @@ public class DiscordBot {
 
         String headUrl = "https://mc-heads.net/avatar/" + playerUuid + "/64";
 
-        var embed = new EmbedBuilder()
+        var embed = new CleanEmbedBuilder()
                 .setTitle(":hammer: Player Banned")
                 .setColor(new Color(0xED, 0x42, 0x45))
                 .setThumbnail(headUrl)

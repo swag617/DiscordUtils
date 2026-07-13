@@ -89,6 +89,7 @@ public class StaffChatBridgeListener implements Listener {
         String[] words = name.toLowerCase().split("_");
         StringBuilder sb = new StringBuilder();
         for (String word : words) {
+            if (word.isEmpty()) continue;
             if (!sb.isEmpty()) sb.append(' ');
             sb.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
         }
