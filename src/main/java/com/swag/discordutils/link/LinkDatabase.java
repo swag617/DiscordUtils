@@ -2,18 +2,18 @@ package com.swag.discordutils.link;
 
 import com.swag.discordutils.DiscordUtils;
 
-import java.io.File;
 import java.sql.*;
 import java.util.UUID;
 
 public class LinkDatabase {
 
-    private final Connection conn;
+    // MIGRATED: connection field removed — pool owned by SwagAPI IDatabaseService
+    private final com.SwagDev.SwagAPI.api.IDatabaseService dbService;
 
-    public LinkDatabase(DiscordUtils plugin) throws SQLException {
-        File dbFile = new File(plugin.getDataFolder(), "links.db");
-        conn = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
-        try (Statement stmt = conn.createStatement()) {
+    public LinkDatabase(DiscordUtils plugin, com.SwagDev.SwagAPI.api.IDatabaseService dbService) throws SQLException {
+        this.dbService = dbService;
+        try (Connection conn = dbService.getConnection();
+             Statement stmt = conn.createStatement()) {
             stmt.execute(
                 "CREATE TABLE IF NOT EXISTS links (" +
                 "  uuid TEXT PRIMARY KEY, " +
@@ -23,8 +23,13 @@ public class LinkDatabase {
         }
     }
 
+    private Connection getConnection() throws SQLException {
+        return dbService.getConnection();
+    }
+
     public synchronized void link(UUID uuid, String discordId) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement(
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(
                 "INSERT OR REPLACE INTO links (uuid, discord_id) VALUES (?, ?)")) {
             ps.setString(1, uuid.toString());
             ps.setString(2, discordId);
@@ -33,7 +38,8 @@ public class LinkDatabase {
     }
 
     public synchronized void unlink(UUID uuid) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement(
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(
                 "DELETE FROM links WHERE uuid = ?")) {
             ps.setString(1, uuid.toString());
             ps.executeUpdate();
@@ -41,7 +47,8 @@ public class LinkDatabase {
     }
 
     public synchronized String getDiscordId(UUID uuid) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement(
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(
                 "SELECT discord_id FROM links WHERE uuid = ?")) {
             ps.setString(1, uuid.toString());
             try (ResultSet rs = ps.executeQuery()) {
@@ -51,7 +58,8 @@ public class LinkDatabase {
     }
 
     public synchronized UUID getMinecraftUUID(String discordId) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement(
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(
                 "SELECT uuid FROM links WHERE discord_id = ?")) {
             ps.setString(1, discordId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -60,7 +68,8 @@ public class LinkDatabase {
         }
     }
 
+    /** No-op — the connection pool is owned and closed by SwagAPI, not this plugin. */
     public synchronized void close() {
-        try { conn.close(); } catch (SQLException ignored) {}
+        // MIGRATED: pool is owned by SwagAPI — do not close it here.
     }
 }

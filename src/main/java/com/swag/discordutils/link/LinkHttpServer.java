@@ -11,6 +11,19 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Standalone {@code /link} server for the Discord OAuth2 callback.
+ *
+ * <p><b>Deliberately NOT migrated to SwagAPI's shared {@code IWebService}</b>, unlike
+ * every other web-facing feature in this ecosystem. Every module registered via
+ * {@code IWebService#registerModule} is unconditionally gated behind SwagAPI's own
+ * panel-login session cookie before the handler ever runs. This route is a Discord
+ * OAuth2 redirect target — a player's browser hits it anonymously straight from
+ * Discord, with no SwagAPI panel session — so gating it behind a panel login would
+ * break account linking for any player who isn't also logged into the web panel.
+ * This class stays its own {@link HttpServer} on its own configured port for exactly
+ * that reason, not because the migration was skipped.</p>
+ */
 public class LinkHttpServer {
 
     private final DiscordUtils plugin;

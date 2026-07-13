@@ -29,16 +29,27 @@ public class DiscordUtils extends JavaPlugin {
     private LinkManager linkManager;
     private LinkHttpServer linkHttpServer;
 
+    // ── SwagAPI service references ─────────────────────────────────────────────
+    private com.SwagDev.SwagAPI.api.IDatabaseService dbService;
+    private com.SwagDev.SwagAPI.api.IEventBusService busService;
+
     @Override
     public void onEnable() {
         instance = this;
         saveDefaultConfig();
         migrateConfig();
 
+        // Step 1 — Hook SwagAPI FIRST, before any manager initialization
+        if (!hookSwagAPI()) {
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
         setupVault();
         setupLinkSystem();
 
         discordBot = new DiscordBot(this);
+        subscribeNotifyChannel();
 
         // Register the JDA listener before connecting so events aren't missed
         DiscordMessageListener discordMessageListener = new DiscordMessageListener(this);
@@ -72,16 +83,108 @@ public class DiscordUtils extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (busService != null) {
+            busService.unsubscribeAll(this);
+        }
         if (linkHttpServer != null) {
             linkHttpServer.stop();
         }
-        if (linkManager != null) {
-            linkManager.getDb().close();
-        }
+        // MIGRATED: linkManager.getDb().close() removed — connection pool is owned by SwagAPI
         if (discordBot != null) {
             discordBot.shutdown();
         }
         getLogger().info("DiscordUtils disabled.");
+    }
+
+    /**
+     * Hooks SwagAPI's shared services. IDatabaseService is a hard requirement — the
+     * link database has no functionality without it. IEventBusService is used for
+     * the discordutils:notify inbound channel and the account_linked/account_unlinked
+     * outbound events; DiscordUtils still runs without it, just without those.
+     *
+     * <p>Note: SwagAPI's IWebService is intentionally NOT hooked here. Every module
+     * registered with it is gated behind SwagAPI's own panel-login session cookie
+     * (see WebService#registerModule), but {@link LinkHttpServer}'s {@code /link}
+     * route is a Discord OAuth2 callback that a player's browser hits anonymously
+     * straight off Discord's redirect — gating it behind a SwagAPI panel login would
+     * break linking for any player not also logged into the web panel. LinkHttpServer
+     * stays its own standalone HttpServer for this reason.</p>
+     */
+    private boolean hookSwagAPI() {
+        org.bukkit.plugin.ServicesManager sm = getServer().getServicesManager();
+
+        org.bukkit.plugin.RegisteredServiceProvider<com.SwagDev.SwagAPI.api.IDatabaseService> dbProv =
+                sm.getRegistration(com.SwagDev.SwagAPI.api.IDatabaseService.class);
+        if (dbProv == null) {
+            getLogger().severe("SwagAPI IDatabaseService not found! Is SwagAPI loaded? Disabling.");
+            return false;
+        }
+        dbService = dbProv.getProvider();
+        getLogger().info("Hooked SwagAPI IDatabaseService.");
+
+        org.bukkit.plugin.RegisteredServiceProvider<com.SwagDev.SwagAPI.api.IEventBusService> busProv =
+                sm.getRegistration(com.SwagDev.SwagAPI.api.IEventBusService.class);
+        if (busProv != null) {
+            busService = busProv.getProvider();
+            getLogger().info("Hooked SwagAPI IEventBusService.");
+        }
+
+        return true;
+    }
+
+    /**
+     * Subscribes to the discordutils:notify event-bus channel so any plugin can send
+     * a webhook-routed Discord message without a compile-time or reflection-based
+     * dependency on DiscordUtils. See README for the payload contract.
+     */
+    private void subscribeNotifyChannel() {
+        if (busService == null) return;
+
+        busService.subscribe("discordutils:notify", event -> {
+            java.util.Map<String, Object> data = event.getData();
+            Object webhookNameObj = data.get("webhook");
+            if (!(webhookNameObj instanceof String webhookName) || webhookName.isEmpty()) {
+                getLogger().warning("discordutils:notify from " + event.getSourcePlugin()
+                        + " is missing a 'webhook' name — dropped.");
+                return;
+            }
+
+            String webhookUrl = getConfig().getString("webhooks." + webhookName, "");
+            if (webhookUrl.isEmpty()) {
+                getLogger().warning("discordutils:notify from " + event.getSourcePlugin()
+                        + " requested webhook '" + webhookName + "', but it is not configured "
+                        + "(webhooks." + webhookName + " in config.yml) — dropped.");
+                return;
+            }
+
+            Object content = data.get("content");
+            if (content instanceof String s && !s.isEmpty()) {
+                discordBot.getWebhookSender().sendContent(webhookUrl, s);
+                return;
+            }
+
+            com.swag.discordutils.webhook.WebhookSender.Embed embed =
+                    new com.swag.discordutils.webhook.WebhookSender.Embed();
+
+            if (data.get("title") instanceof String s && !s.isEmpty()) embed.title(s);
+            if (data.get("description") instanceof String s && !s.isEmpty()) embed.description(s);
+            if (data.get("color") instanceof Number n) embed.color(n.intValue());
+
+            Object fieldsObj = data.get("fields");
+            if (fieldsObj instanceof java.util.List<?> list) {
+                for (Object o : list) {
+                    if (!(o instanceof java.util.Map<?, ?> fieldMap)) continue;
+                    String name = String.valueOf(fieldMap.get("name"));
+                    String value = String.valueOf(fieldMap.get("value"));
+                    boolean inline = fieldMap.get("inline") instanceof Boolean b && b;
+                    embed.field(name, value, inline);
+                }
+            }
+
+            discordBot.getWebhookSender().send(webhookUrl, embed);
+        }, this);
+
+        getLogger().info("Subscribed to discordutils:notify event-bus channel.");
     }
 
     private void setupAuctionHouseListener() {
@@ -120,10 +223,10 @@ public class DiscordUtils extends JavaPlugin {
         }
 
         try {
-            LinkDatabase db = new LinkDatabase(this);
+            LinkDatabase db = new LinkDatabase(this, dbService);
             linkManager = new LinkManager(this, db);
         } catch (SQLException e) {
-            getLogger().severe("Failed to open links.db: " + e.getMessage());
+            getLogger().severe("Failed to initialize the links table: " + e.getMessage());
             return;
         }
 
@@ -277,8 +380,26 @@ public class DiscordUtils extends JavaPlugin {
             getLogger().info("Config migrated to version 4.");
         }
 
+        if (version < 5) {
+            // Version 5 — named webhooks, now the recommended way to send Discord
+            // messages (bot connection becomes optional, only needed for two-way
+            // features). Seed empty so existing bot-based setups keep working as-is.
+            if (!getConfig().isSet("webhooks.chat"))            getConfig().set("webhooks.chat",            "");
+            if (!getConfig().isSet("webhooks.staff-chat"))      getConfig().set("webhooks.staff-chat",      "");
+            if (!getConfig().isSet("webhooks.join-leave"))      getConfig().set("webhooks.join-leave",      "");
+            if (!getConfig().isSet("webhooks.afk"))             getConfig().set("webhooks.afk",             "");
+            if (!getConfig().isSet("webhooks.auction-house"))   getConfig().set("webhooks.auction-house",   "");
+            if (!getConfig().isSet("webhooks.punishments"))     getConfig().set("webhooks.punishments",     "");
+            if (!getConfig().isSet("webhooks.deaths"))          getConfig().set("webhooks.deaths",          "");
+            if (!getConfig().isSet("webhooks.server-messages")) getConfig().set("webhooks.server-messages", "");
+
+            getConfig().set("config-version", 5);
+            dirty = true;
+            getLogger().info("Config migrated to version 5.");
+        }
+
         // Future versions go here as additional if blocks:
-        // if (version < 5) { ... getConfig().set("config-version", 5); dirty = true; }
+        // if (version < 6) { ... getConfig().set("config-version", 6); dirty = true; }
 
         if (dirty) saveConfig();
     }
@@ -313,5 +434,14 @@ public class DiscordUtils extends JavaPlugin {
     /** Returns the LinkManager, or null if the link system is not configured. */
     public LinkManager getLinkManager() {
         return linkManager;
+    }
+
+    public com.SwagDev.SwagAPI.api.IDatabaseService getDbService() {
+        return dbService;
+    }
+
+    /** Returns the SwagAPI event bus, or null if SwagAPI didn't register one. */
+    public com.SwagDev.SwagAPI.api.IEventBusService getBusService() {
+        return busService;
     }
 }

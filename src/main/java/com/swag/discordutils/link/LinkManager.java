@@ -102,6 +102,7 @@ public class LinkManager {
             }
 
             db.link(link.playerUuid(), discordUserId);
+            publishLinkedEvent(link.playerUuid(), discordUserId);
             assignRoleAsync(link.playerUuid(), discordUserId);
 
             Bukkit.getScheduler().runTask(plugin, () -> {
@@ -135,6 +136,7 @@ public class LinkManager {
 
         try {
             db.link(link.playerUuid(), discordUserId);
+            publishLinkedEvent(link.playerUuid(), discordUserId);
             assignRoleAsync(link.playerUuid(), discordUserId);
 
             Bukkit.getScheduler().runTask(plugin, () -> {
@@ -176,12 +178,37 @@ public class LinkManager {
             if (discordId == null) return false;
 
             db.unlink(uuid);
+            publishUnlinkedEvent(uuid, discordId);
             removeRankRolesAsync(discordId);
             return true;
         } catch (SQLException e) {
             plugin.getLogger().warning("Unlink failed for " + uuid + ": " + e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Publishes discordutils:account_linked on SwagAPI's event bus so other plugins
+     * (e.g. SwagCore's ProfileModule) can react without depending on DiscordUtils.
+     * No-ops if SwagAPI's event bus isn't available.
+     */
+    private void publishLinkedEvent(UUID uuid, String discordId) {
+        var bus = plugin.getBusService();
+        if (bus == null) return;
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("discordId", discordId);
+        bus.publish(new com.SwagDev.SwagAPI.events.SwagCrossPluginMessageEvent(
+                "discordutils:account_linked", "DiscordUtils", data, uuid));
+    }
+
+    /** Publishes discordutils:account_unlinked — see {@link #publishLinkedEvent}. */
+    private void publishUnlinkedEvent(UUID uuid, String discordId) {
+        var bus = plugin.getBusService();
+        if (bus == null) return;
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("discordId", discordId);
+        bus.publish(new com.SwagDev.SwagAPI.events.SwagCrossPluginMessageEvent(
+                "discordutils:account_unlinked", "DiscordUtils", data, uuid));
     }
 
     private void removeRankRolesAsync(String discordUserId) {

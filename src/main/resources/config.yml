@@ -1,11 +1,34 @@
 # DiscordUtils Configuration
 # config-version - Do NOT change this value manually.
-config-version: 4
+config-version: 5
 # Set to true to log every caught broadcast to console - useful for diagnosing AFK/mini-game relay issues.
 debug: false
+
+# Named Discord webhook URLs. This is the recommended way to get messages into
+# Discord - no bot token, no privileged intents, no gateway connection needed.
+# Each key below is checked by its matching feature before falling back to the bot
+# (if one is connected). Leave a URL blank to use the bot for that category instead.
+#
+# You can also point ANY plugin's Discord notification at one of these by name -
+# see the discordutils:notify event-bus channel in the README.
+webhooks:
+  chat: ""
+  staff-chat: ""
+  join-leave: ""
+  afk: ""
+  auction-house: ""
+  punishments: ""
+  deaths: ""
+  server-messages: ""
+
 # IMPORTANT: You must enable the "Message Content Intent" (Privileged Gateway Intent)
 # in your bot's settings at https://discord.com/developers/applications
 # Without it, getContentDisplay() will always return empty for non-bot messages.
+#
+# The bot is now OPTIONAL. It's only needed for two-way features: Discord->Minecraft
+# chat/staff-chat relay, DM-based /discordlink codes, and Discord role sync on link.
+# Every other message category above works fine with just a webhook URL and no bot
+# at all - leave bot-token unset if you don't need the two-way features.
 
 # Your Discord bot token - get it from the Discord Developer Portal.
 bot-token: "YOUR_BOT_TOKEN_HERE"

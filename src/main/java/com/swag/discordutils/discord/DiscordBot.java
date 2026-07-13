@@ -4,6 +4,7 @@ import com.swag.discordutils.DiscordUtils;
 import com.swag.discordutils.listeners.AuctionHouseListener.AuctionAction;
 import com.swag.discordutils.util.AuctionBadgeRenderer;
 import com.swag.discordutils.util.CleanEmbedBuilder;
+import com.swag.discordutils.webhook.WebhookSender;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
@@ -19,11 +20,34 @@ import java.util.logging.Level;
 public class DiscordBot {
 
     private final DiscordUtils plugin;
+    private final WebhookSender webhookSender;
     private JDA jda;
     private volatile boolean ready = false;
 
     public DiscordBot(DiscordUtils plugin) {
         this.plugin = plugin;
+        this.webhookSender = new WebhookSender(plugin.getLogger());
+    }
+
+    /**
+     * Returns the configured webhook URL for the given category (e.g. "chat",
+     * "join-leave"), or null/empty if not configured — every send*() method below
+     * checks this first and only falls back to the JDA bot when it's unset.
+     */
+    private String webhookUrl(String name) {
+        return plugin.getConfig().getString("webhooks." + name, "");
+    }
+
+    private boolean hasWebhook(String name) {
+        String url = webhookUrl(name);
+        return url != null && !url.isEmpty();
+    }
+
+    /** Exposes the shared {@link WebhookSender} so callers outside this class (e.g. the
+     *  discordutils:notify event-bus subscriber) can send arbitrary webhook messages
+     *  through the same HTTP client rather than constructing their own. */
+    public WebhookSender getWebhookSender() {
+        return webhookSender;
     }
 
     /**
@@ -97,6 +121,10 @@ public class DiscordBot {
      * and chat.channel-id at send-time so hot-reloads take effect without a restart.
      */
     public void sendMessage(String text) {
+        if (hasWebhook("chat")) {
+            webhookSender.sendContent(webhookUrl("chat"), text);
+            return;
+        }
         if (!ready || jda == null) return;
 
         int serverNumber = plugin.getConfig().getInt("chat.server", 1);
@@ -117,6 +145,10 @@ public class DiscordBot {
      * Reads staff-chat.server and staff-chat.channel-id at send-time.
      */
     public void sendStaffChatText(String text) {
+        if (hasWebhook("staff-chat")) {
+            webhookSender.sendContent(webhookUrl("staff-chat"), text);
+            return;
+        }
         if (!ready || jda == null) {
             plugin.getLogger().warning("[StaffChat] Bot is not ready yet — message not sent.");
             return;
@@ -145,6 +177,13 @@ public class DiscordBot {
      * Sends a staff chat message as a Discord embed with a rendered item tooltip image attached.
      */
     public void sendStaffChatItemEmbed(String messageText, byte[] tooltipImage) {
+        if (hasWebhook("staff-chat")) {
+            webhookSender.send(webhookUrl("staff-chat"), new WebhookSender.Embed()
+                    .description(messageText)
+                    .color(0xED4245)
+                    .image(tooltipImage, "tooltip.png"));
+            return;
+        }
         if (!ready || jda == null) return;
 
         int serverNumber = plugin.getConfig().getInt("staff-chat.server", 1);
@@ -170,6 +209,10 @@ public class DiscordBot {
      * Reads server-messages.server and server-messages.channel-id at send-time.
      */
     public void sendServerMessageText(String text) {
+        if (hasWebhook("server-messages")) {
+            webhookSender.sendContent(webhookUrl("server-messages"), text);
+            return;
+        }
         if (!ready || jda == null) return;
 
         int serverNumber = plugin.getConfig().getInt("server-messages.server", 1);
@@ -190,15 +233,6 @@ public class DiscordBot {
      * The head image is fetched from the mc-heads.net CDN using the player's UUID.
      */
     public void sendJoinLeaveEmbed(String playerName, UUID playerUuid, boolean joined) {
-        if (!ready || jda == null) return;
-
-        int serverNumber = plugin.getConfig().getInt("join-leave.server", 1);
-        String channelId = plugin.getConfig().getString("join-leave.channel-id", "");
-        if (channelId.isEmpty() || channelId.equals("YOUR_CHANNEL_ID_HERE")) return;
-
-        TextChannel channel = getTextChannel(serverNumber, channelId);
-        if (channel == null) return;
-
         String configKey = joined ? "join-leave.join-format" : "join-leave.leave-format";
         String defaultFmt = joined
                 ? ":green_circle: **{player}** joined the server."
@@ -209,12 +243,30 @@ public class DiscordBot {
         String headUrl = "https://mc-heads.net/avatar/" + playerUuid + "/64";
 
         // Green for join, red for leave - matching Discord's status colours
-        Color color = joined ? new Color(0x57, 0xF2, 0x87) : new Color(0xED, 0x42, 0x45);
+        int colorInt = joined ? 0x57F287 : 0xED4245;
+
+        if (hasWebhook("join-leave")) {
+            webhookSender.send(webhookUrl("join-leave"), new WebhookSender.Embed()
+                    .description(description)
+                    .thumbnailUrl(headUrl)
+                    .color(colorInt)
+                    .timestamp(java.time.Instant.now()));
+            return;
+        }
+
+        if (!ready || jda == null) return;
+
+        int serverNumber = plugin.getConfig().getInt("join-leave.server", 1);
+        String channelId = plugin.getConfig().getString("join-leave.channel-id", "");
+        if (channelId.isEmpty() || channelId.equals("YOUR_CHANNEL_ID_HERE")) return;
+
+        TextChannel channel = getTextChannel(serverNumber, channelId);
+        if (channel == null) return;
 
         var embed = new CleanEmbedBuilder()
                 .setDescription(description)
                 .setThumbnail(headUrl)
-                .setColor(color)
+                .setColor(new Color(colorInt))
                 .setTimestamp(java.time.Instant.now())
                 .build();
 
@@ -230,6 +282,25 @@ public class DiscordBot {
      * @param goingAfk true if the player is going AFK, false if they are returning
      */
     public void sendAfkEmbed(String playerName, UUID playerUuid, boolean goingAfk) {
+        String configKey  = goingAfk ? "afk.afk-format" : "afk.back-format";
+        String defaultFmt = goingAfk ? ":zzz: **{player}** is now AFK." : ":wave: **{player}** is no longer AFK.";
+        String description = plugin.getConfig().getString(configKey, defaultFmt)
+                .replace("{player}", playerName);
+
+        String headUrl = "https://mc-heads.net/avatar/" + playerUuid + "/64";
+
+        // Yellow for going AFK, light blue for returning
+        int colorInt = goingAfk ? 0xFFD700 : 0x00B0FF;
+
+        if (hasWebhook("afk")) {
+            webhookSender.send(webhookUrl("afk"), new WebhookSender.Embed()
+                    .description(description)
+                    .thumbnailUrl(headUrl)
+                    .color(colorInt)
+                    .timestamp(java.time.Instant.now()));
+            return;
+        }
+
         if (!ready || jda == null) return;
 
         int serverNumber = plugin.getConfig().getInt("afk.server", 1);
@@ -239,20 +310,10 @@ public class DiscordBot {
         TextChannel channel = getTextChannel(serverNumber, channelId);
         if (channel == null) return;
 
-        String configKey  = goingAfk ? "afk.afk-format" : "afk.back-format";
-        String defaultFmt = goingAfk ? ":zzz: **{player}** is now AFK." : ":wave: **{player}** is no longer AFK.";
-        String description = plugin.getConfig().getString(configKey, defaultFmt)
-                .replace("{player}", playerName);
-
-        String headUrl = "https://mc-heads.net/avatar/" + playerUuid + "/64";
-
-        // Yellow for going AFK, light blue for returning
-        Color color = goingAfk ? new Color(0xFF, 0xD7, 0x00) : new Color(0x00, 0xB0, 0xFF);
-
         var embed = new CleanEmbedBuilder()
                 .setDescription(description)
                 .setThumbnail(headUrl)
-                .setColor(color)
+                .setColor(new Color(colorInt))
                 .setTimestamp(java.time.Instant.now())
                 .build();
 
@@ -270,6 +331,14 @@ public class DiscordBot {
      * @param tooltipImage   PNG bytes from ItemTooltipRenderer
      */
     public void sendItemEmbed(String authorDisplay, String messageText, byte[] tooltipImage) {
+        if (hasWebhook("chat")) {
+            webhookSender.send(webhookUrl("chat"), new WebhookSender.Embed()
+                    .title("Item Display")
+                    .description(messageText)
+                    .color(0x55FF55)
+                    .image(tooltipImage, "tooltip.png"));
+            return;
+        }
         if (!ready || jda == null) return;
 
         int serverNumber = plugin.getConfig().getInt("chat.server", 1);
@@ -304,23 +373,14 @@ public class DiscordBot {
      */
     public void sendAuctionEmbed(AuctionAction action, String itemName, int amount,
                                  String material, long price, String sellerName, String secondParty) {
-        if (!ready || jda == null) return;
-
-        int serverNumber = plugin.getConfig().getInt("auction-house.server", 1);
-        String channelId = plugin.getConfig().getString("auction-house.channel-id", "");
-        if (channelId.isEmpty() || channelId.equals("YOUR_AUCTION_CHANNEL_ID_HERE")) return;
-
-        TextChannel channel = getTextChannel(serverNumber, channelId);
-        if (channel == null) return;
-
-        Color color;
+        int colorInt;
         String title;
         switch (action) {
-            case LISTED        -> { color = new Color(0xFF, 0xD7, 0x00); title = "Item Listed"; }
-            case SOLD          -> { color = new Color(0x57, 0xF2, 0x87); title = "Item Sold"; }
-            case REMOVED       -> { color = new Color(0xED, 0x42, 0x45); title = "Listing Removed"; }
-            case ADMIN_REMOVED -> { color = new Color(0xED, 0x42, 0x45); title = "Listing Removed by Admin"; }
-            default            -> { color = Color.GRAY;                  title = "Auction House"; }
+            case LISTED        -> { colorInt = 0xFFD700; title = "Item Listed"; }
+            case SOLD          -> { colorInt = 0x57F287; title = "Item Sold"; }
+            case REMOVED       -> { colorInt = 0xED4245; title = "Listing Removed"; }
+            case ADMIN_REMOVED -> { colorInt = 0xED4245; title = "Listing Removed by Admin"; }
+            default            -> { colorInt = 0x808080;  title = "Auction House"; }
         }
 
         // Fetch the badge image (cached after first render)
@@ -339,9 +399,41 @@ public class DiscordBot {
         String priceFormatted = String.format("%,d", price);
         String itemDisplay = amount + "x " + ((itemName == null || itemName.isEmpty()) ? material : itemName);
 
+        if (hasWebhook("auction-house")) {
+            WebhookSender.Embed embed = new WebhookSender.Embed()
+                    .title(title)
+                    .color(colorInt)
+                    .field("Item", itemDisplay, true)
+                    .field("Price", priceFormatted, true)
+                    .field("Seller", sellerName, true)
+                    .timestamp(java.time.Instant.now());
+
+            if (action == AuctionAction.SOLD && secondParty != null) {
+                embed.field("Buyer", secondParty, true);
+            } else if (action == AuctionAction.ADMIN_REMOVED && secondParty != null) {
+                embed.field("Removed By", secondParty, true);
+            }
+
+            if (badge != null) {
+                embed.thumbnailImage(badge, "badge.png");
+            }
+
+            webhookSender.send(webhookUrl("auction-house"), embed);
+            return;
+        }
+
+        if (!ready || jda == null) return;
+
+        int serverNumber = plugin.getConfig().getInt("auction-house.server", 1);
+        String channelId = plugin.getConfig().getString("auction-house.channel-id", "");
+        if (channelId.isEmpty() || channelId.equals("YOUR_AUCTION_CHANNEL_ID_HERE")) return;
+
+        TextChannel channel = getTextChannel(serverNumber, channelId);
+        if (channel == null) return;
+
         var embed = new CleanEmbedBuilder()
                 .setTitle(title)
-                .setColor(color)
+                .setColor(new Color(colorInt))
                 .addField("Item", itemDisplay, true)
                 .addField("Price", priceFormatted, true)
                 .addField("Seller", sellerName, true)
@@ -410,15 +502,21 @@ public class DiscordBot {
      * @param message the plain-text vanilla death message (formatting already stripped)
      */
     public void sendDeathMessage(String message) {
-        if (!ready || jda == null) return;
         if (!plugin.getConfig().getBoolean("deaths.enabled", false)) return;
+        String format = plugin.getConfig().getString("deaths.format", ":skull: {message}")
+                .replace("{message}", message);
+
+        if (hasWebhook("deaths")) {
+            webhookSender.sendContent(webhookUrl("deaths"), format);
+            return;
+        }
+
+        if (!ready || jda == null) return;
         int serverNumber = plugin.getConfig().getInt("deaths.server", 1);
         String channelId = plugin.getConfig().getString("deaths.channel-id", "");
         if (channelId.isEmpty() || channelId.equals("YOUR_CHANNEL_ID_HERE")) return;
         TextChannel channel = getTextChannel(serverNumber, channelId);
         if (channel == null) return;
-        String format = plugin.getConfig().getString("deaths.format", ":skull: {message}")
-                .replace("{message}", message);
         channel.sendMessage(format).queue(
             null,
             err -> plugin.getLogger().warning("Failed to send death message: " + err.getMessage())
@@ -474,8 +572,26 @@ public class DiscordBot {
      */
     public void sendPunishmentEmbed(String playerName, java.util.UUID playerUuid,
                                     String reason, String bannedBy) {
-        if (!ready || jda == null) return;
         if (!plugin.getConfig().getBoolean("punishments.enabled", false)) return;
+
+        String safeReason  = (reason   != null && !reason.isEmpty())   ? reason   : "No reason provided";
+        String safeBannedBy = (bannedBy != null && !bannedBy.isEmpty()) ? bannedBy : "Unknown";
+        String headUrl = "https://mc-heads.net/avatar/" + playerUuid + "/64";
+
+        if (hasWebhook("punishments")) {
+            webhookSender.send(webhookUrl("punishments"), new WebhookSender.Embed()
+                    .title(":hammer: Player Banned")
+                    .color(0xED4245)
+                    .thumbnailUrl(headUrl)
+                    .field("Player", playerName, true)
+                    .field("UUID", playerUuid.toString(), false)
+                    .field("Reason", safeReason, false)
+                    .field("Banned By", safeBannedBy, true)
+                    .timestamp(java.time.Instant.now()));
+            return;
+        }
+
+        if (!ready || jda == null) return;
 
         int serverNumber = plugin.getConfig().getInt("punishments.server", 1);
         String channelId = plugin.getConfig().getString("punishments.channel-id", "");
@@ -483,11 +599,6 @@ public class DiscordBot {
 
         TextChannel channel = getTextChannel(serverNumber, channelId);
         if (channel == null) return;
-
-        String safeReason  = (reason   != null && !reason.isEmpty())   ? reason   : "No reason provided";
-        String safeBannedBy = (bannedBy != null && !bannedBy.isEmpty()) ? bannedBy : "Unknown";
-
-        String headUrl = "https://mc-heads.net/avatar/" + playerUuid + "/64";
 
         var embed = new CleanEmbedBuilder()
                 .setTitle(":hammer: Player Banned")
