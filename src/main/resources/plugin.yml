@@ -1,5 +1,5 @@
 name: DiscordUtils
-version: 1.3.0
+version: 1.4.0
 main: com.swag.discordutils.DiscordUtils
 api-version: 1.20
 description: Discord bridge plugin - webhook and bot-based chat/notification relay for the Swag617 ecosystem.
@@ -32,9 +32,13 @@ commands:
     description: Get the Discord invite link.
     usage: /discord
     permission: discordutils.discord
+  discordwebhook:
+    description: Configure named Discord webhooks.
+    usage: /discordwebhook <set|remove|list|test> [name] [url]
+    permission: discordutils.admin
 permissions:
   discordutils.admin:
-    description: Allows use of /discordchat command.
+    description: Allows use of /discordchat and /discordwebhook commands.
     default: op
   discordutils.link:
     description: Allows use of /discordlink command.

@@ -1,8 +1,14 @@
 # DiscordUtils Configuration
 # config-version - Do NOT change this value manually.
-config-version: 5
+config-version: 7
 # Set to true to log every caught broadcast to console - useful for diagnosing AFK/mini-game relay issues.
 debug: false
+
+# Web dashboard — registered with SwagAPI's shared IWebService at
+# http://<swagapi-bind-ip>:<swagapi-port>/swagapi/discordutils/
+# Login is handled by SwagAPI's own panel accounts — there is no separate dashboard password.
+dashboard:
+  enabled: true
 
 # Named Discord webhook URLs. This is the recommended way to get messages into
 # Discord - no bot token, no privileged intents, no gateway connection needed.
@@ -20,6 +26,15 @@ webhooks:
   punishments: ""
   deaths: ""
   server-messages: ""
+
+# Digest mode — for discordutils:notify traffic only (chat/join-leave/etc. above are
+# unaffected). Webhook names listed here buffer incoming messages instead of sending each
+# one immediately, flushing everything buffered as a single combined embed every
+# window-seconds. Useful for a chatty source (e.g. many small notifications in a short
+# burst) that would otherwise spam the channel.
+digest:
+  enabled-webhooks: []
+  window-seconds: 30
 
 # IMPORTANT: You must enable the "Message Content Intent" (Privileged Gateway Intent)
 # in your bot's settings at https://discord.com/developers/applications

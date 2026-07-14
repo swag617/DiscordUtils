@@ -4,6 +4,7 @@ import com.swag.discordutils.commands.DiscordChatCommand;
 import com.swag.discordutils.commands.DiscordCommand;
 import com.swag.discordutils.commands.DiscordLinkCommand;
 import com.swag.discordutils.commands.DiscordUnlinkCommand;
+import com.swag.discordutils.commands.DiscordWebhookCommand;
 import com.swag.discordutils.discord.DiscordBot;
 import com.swag.discordutils.link.LinkDatabase;
 import com.swag.discordutils.link.LinkHttpServer;
@@ -28,10 +29,13 @@ public class DiscordUtils extends JavaPlugin {
     private Chat vaultChat;
     private LinkManager linkManager;
     private LinkHttpServer linkHttpServer;
+    private final com.swag.discordutils.webhook.DigestBuffer digestBuffer = new com.swag.discordutils.webhook.DigestBuffer();
+    private boolean dashboardRegistered = false;
 
     // ── SwagAPI service references ─────────────────────────────────────────────
     private com.SwagDev.SwagAPI.api.IDatabaseService dbService;
     private com.SwagDev.SwagAPI.api.IEventBusService busService;
+    private com.SwagDev.SwagAPI.api.IWebService webService;
 
     @Override
     public void onEnable() {
@@ -50,6 +54,8 @@ public class DiscordUtils extends JavaPlugin {
 
         discordBot = new DiscordBot(this);
         subscribeNotifyChannel();
+        startDigestFlushTask();
+        registerDashboard();
 
         // Register the JDA listener before connecting so events aren't missed
         DiscordMessageListener discordMessageListener = new DiscordMessageListener(this);
@@ -71,6 +77,10 @@ public class DiscordUtils extends JavaPlugin {
         getCommand("discordlink").setExecutor(new DiscordLinkCommand(this));
         getCommand("discordunlink").setExecutor(new DiscordUnlinkCommand(this));
 
+        DiscordWebhookCommand webhookCmd = new DiscordWebhookCommand(this);
+        getCommand("discordwebhook").setExecutor(webhookCmd);
+        getCommand("discordwebhook").setTabCompleter(webhookCmd);
+
         if (getConfig().getBoolean("discord-invite.enabled", false)) {
             DiscordCommand discordCmd = new DiscordCommand(this);
             if (getCommand("discord") != null) {
@@ -83,6 +93,9 @@ public class DiscordUtils extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (dashboardRegistered && webService != null) {
+            webService.unregisterModule(this);
+        }
         if (busService != null) {
             busService.unsubscribeAll(this);
         }
@@ -92,6 +105,9 @@ public class DiscordUtils extends JavaPlugin {
         // MIGRATED: linkManager.getDb().close() removed — connection pool is owned by SwagAPI
         if (discordBot != null) {
             discordBot.shutdown();
+            // Independent of the bot connection (webhook-only setups never connect a bot at
+            // all), so this must not be nested inside DiscordBot#shutdown()'s early return.
+            discordBot.getWebhookSender().shutdown();
         }
         getLogger().info("DiscordUtils disabled.");
     }
@@ -102,13 +118,15 @@ public class DiscordUtils extends JavaPlugin {
      * the discordutils:notify inbound channel and the account_linked/account_unlinked
      * outbound events; DiscordUtils still runs without it, just without those.
      *
-     * <p>Note: SwagAPI's IWebService is intentionally NOT hooked here. Every module
-     * registered with it is gated behind SwagAPI's own panel-login session cookie
-     * (see WebService#registerModule), but {@link LinkHttpServer}'s {@code /link}
-     * route is a Discord OAuth2 callback that a player's browser hits anonymously
-     * straight off Discord's redirect — gating it behind a SwagAPI panel login would
-     * break linking for any player not also logged into the web panel. LinkHttpServer
-     * stays its own standalone HttpServer for this reason.</p>
+     * <p>IWebService is hooked here too, but ONLY for the admin dashboard
+     * ({@code registerDashboard()}) — every module registered with it is gated behind
+     * SwagAPI's own panel-login session cookie (see WebService#registerModule), which is
+     * exactly right for an admin-only page. {@link LinkHttpServer}'s {@code /link} route
+     * is a different story: it's a Discord OAuth2 callback that a player's browser hits
+     * anonymously straight off Discord's redirect, so gating it behind a SwagAPI panel
+     * login would break linking for any player not also logged into the web panel.
+     * LinkHttpServer stays its own standalone HttpServer for that reason and does not use
+     * this IWebService hook.</p>
      */
     private boolean hookSwagAPI() {
         org.bukkit.plugin.ServicesManager sm = getServer().getServicesManager();
@@ -129,7 +147,34 @@ public class DiscordUtils extends JavaPlugin {
             getLogger().info("Hooked SwagAPI IEventBusService.");
         }
 
+        org.bukkit.plugin.RegisteredServiceProvider<com.SwagDev.SwagAPI.api.IWebService> webProv =
+                sm.getRegistration(com.SwagDev.SwagAPI.api.IWebService.class);
+        if (webProv != null) {
+            webService = webProv.getProvider();
+            getLogger().info("Hooked SwagAPI IWebService.");
+        }
+
         return true;
+    }
+
+    /**
+     * Registers the webhook dashboard with SwagAPI's shared IWebService, if available.
+     * DiscordUtils does not own an HttpServer for this — SwagAPI's shared server does,
+     * already gated by SwagAPI's own login system, so the dashboard has no password/auth
+     * of its own.
+     */
+    private void registerDashboard() {
+        if (!getConfig().getBoolean("dashboard.enabled", true)) {
+            getLogger().info("Dashboard disabled in config, skipping.");
+            return;
+        }
+        if (webService == null) {
+            getLogger().warning("SwagAPI IWebService not present — dashboard unavailable.");
+            return;
+        }
+        webService.registerModule(this, new com.swag.discordutils.web.WebHttpHandler(this));
+        dashboardRegistered = true;
+        getLogger().info("Dashboard registered at " + webService.getPluginUrl(getName().toLowerCase()));
     }
 
     /**
@@ -142,24 +187,39 @@ public class DiscordUtils extends JavaPlugin {
 
         busService.subscribe("discordutils:notify", event -> {
             java.util.Map<String, Object> data = event.getData();
-            Object webhookNameObj = data.get("webhook");
-            if (!(webhookNameObj instanceof String webhookName) || webhookName.isEmpty()) {
+
+            // A raw URL always wins if present — lets a plugin send a one-off Discord
+            // message without needing a name pre-configured in webhooks.* first.
+            // statsName stays null for these since there's no stable name to attribute to.
+            String webhookName = data.get("webhook") instanceof String s && !s.isEmpty() ? s : null;
+            String webhookUrl;
+            if (data.get("webhookUrl") instanceof String rawUrl && !rawUrl.isEmpty()) {
+                webhookUrl = rawUrl;
+            } else if (webhookName != null) {
+                webhookUrl = getConfig().getString("webhooks." + webhookName, "");
+                if (webhookUrl.isEmpty()) {
+                    getLogger().warning("discordutils:notify from " + event.getSourcePlugin()
+                            + " requested webhook '" + webhookName + "', but it is not configured "
+                            + "(webhooks." + webhookName + " in config.yml) — dropped.");
+                    return;
+                }
+            } else {
                 getLogger().warning("discordutils:notify from " + event.getSourcePlugin()
-                        + " is missing a 'webhook' name — dropped.");
+                        + " has neither a 'webhook' name nor a 'webhookUrl' — dropped.");
                 return;
             }
 
-            String webhookUrl = getConfig().getString("webhooks." + webhookName, "");
-            if (webhookUrl.isEmpty()) {
-                getLogger().warning("discordutils:notify from " + event.getSourcePlugin()
-                        + " requested webhook '" + webhookName + "', but it is not configured "
-                        + "(webhooks." + webhookName + " in config.yml) — dropped.");
+            String username = data.get("username") instanceof String s && !s.isEmpty() ? s : null;
+            String avatarUrl = data.get("avatarUrl") instanceof String s && !s.isEmpty() ? s : null;
+
+            if (isDigestEnabled(webhookName)) {
+                digestBuffer.append(webhookName, webhookUrl, buildDigestLine(data), username, avatarUrl);
                 return;
             }
 
             Object content = data.get("content");
             if (content instanceof String s && !s.isEmpty()) {
-                discordBot.getWebhookSender().sendContent(webhookUrl, s);
+                discordBot.getWebhookSender().sendContent(webhookUrl, s, username, avatarUrl, webhookName);
                 return;
             }
 
@@ -169,6 +229,8 @@ public class DiscordUtils extends JavaPlugin {
             if (data.get("title") instanceof String s && !s.isEmpty()) embed.title(s);
             if (data.get("description") instanceof String s && !s.isEmpty()) embed.description(s);
             if (data.get("color") instanceof Number n) embed.color(n.intValue());
+            if (username != null) embed.username(username);
+            if (avatarUrl != null) embed.avatarUrl(avatarUrl);
 
             Object fieldsObj = data.get("fields");
             if (fieldsObj instanceof java.util.List<?> list) {
@@ -181,10 +243,58 @@ public class DiscordUtils extends JavaPlugin {
                 }
             }
 
-            discordBot.getWebhookSender().send(webhookUrl, embed);
+            discordBot.getWebhookSender().send(webhookUrl, embed, webhookName);
         }, this);
 
         getLogger().info("Subscribed to discordutils:notify event-bus channel.");
+    }
+
+    private boolean isDigestEnabled(String webhookName) {
+        if (webhookName == null) return false;
+        return getConfig().getStringList("digest.enabled-webhooks").contains(webhookName);
+    }
+
+    /** Collapses a notify event's payload into one line for the digest's bullet list. */
+    private String buildDigestLine(java.util.Map<String, Object> data) {
+        if (data.get("content") instanceof String s && !s.isEmpty()) return s;
+        String title = data.get("title") instanceof String s ? s : null;
+        String description = data.get("description") instanceof String s ? s : null;
+        if (title != null && description != null) return "**" + title + "** — " + description;
+        if (title != null) return title;
+        if (description != null) return description;
+        return "(no content)";
+    }
+
+    /**
+     * Starts the periodic task that flushes every non-empty digest buffer into a single
+     * embed per webhook name. No-ops if digest.window-seconds is unset/non-positive.
+     */
+    private void startDigestFlushTask() {
+        long windowSeconds = getConfig().getLong("digest.window-seconds", 30L);
+        if (windowSeconds <= 0) return;
+        long ticks = windowSeconds * 20L;
+        getServer().getScheduler().runTaskTimerAsynchronously(this, this::flushDigests, ticks, ticks);
+    }
+
+    private void flushDigests() {
+        for (String name : digestBuffer.bufferedWebhookNames()) {
+            var result = digestBuffer.flush(name);
+            if (result == null) continue;
+
+            StringBuilder description = new StringBuilder();
+            for (String line : result.lines()) {
+                description.append("• ").append(line).append("\n");
+            }
+
+            var embed = new com.swag.discordutils.webhook.WebhookSender.Embed()
+                    .description(description.toString().trim())
+                    .color(0x5865F2)
+                    .timestamp(java.time.Instant.now());
+            if (result.username() != null) embed.username(result.username());
+            if (result.avatarUrl() != null) embed.avatarUrl(result.avatarUrl());
+
+            discordBot.getWebhookSender().send(result.webhookUrl(), embed, name);
+        }
     }
 
     private void setupAuctionHouseListener() {
@@ -398,8 +508,27 @@ public class DiscordUtils extends JavaPlugin {
             getLogger().info("Config migrated to version 5.");
         }
 
+        if (version < 6) {
+            // Version 6 — digest mode for discordutils:notify traffic.
+            if (!getConfig().isSet("digest.enabled-webhooks")) getConfig().set("digest.enabled-webhooks", java.util.List.of());
+            if (!getConfig().isSet("digest.window-seconds"))   getConfig().set("digest.window-seconds",   30);
+
+            getConfig().set("config-version", 6);
+            dirty = true;
+            getLogger().info("Config migrated to version 6.");
+        }
+
+        if (version < 7) {
+            // Version 7 — web dashboard.
+            if (!getConfig().isSet("dashboard.enabled")) getConfig().set("dashboard.enabled", true);
+
+            getConfig().set("config-version", 7);
+            dirty = true;
+            getLogger().info("Config migrated to version 7.");
+        }
+
         // Future versions go here as additional if blocks:
-        // if (version < 6) { ... getConfig().set("config-version", 6); dirty = true; }
+        // if (version < 8) { ... getConfig().set("config-version", 8); dirty = true; }
 
         if (dirty) saveConfig();
     }
