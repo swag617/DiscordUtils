@@ -4,9 +4,8 @@ main: com.swag.discordutils.DiscordUtils
 api-version: 1.20
 description: Discord bridge plugin - webhook and bot-based chat/notification relay for the Swag617 ecosystem.
 
-depend: [SwagAPI]
-
 softdepend:
+  - SwagAPI
   - Vault
   - LuckPerms
   - CMI

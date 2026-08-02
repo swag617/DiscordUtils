@@ -43,17 +43,16 @@ public class DiscordUtils extends JavaPlugin {
         saveDefaultConfig();
         migrateConfig();
 
-        // Step 1 — Hook SwagAPI FIRST, before any manager initialization
-        if (!hookSwagAPI()) {
-            getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
+        // Step 1 — Hook SwagAPI FIRST (soft dependency — no-ops gracefully if absent),
+        // before any manager initialization that might want its services.
+        hookSwagAPI();
 
         setupVault();
         setupLinkSystem();
 
         discordBot = new DiscordBot(this);
         subscribeNotifyChannel();
+        subscribeSwagCorePunishments();
         startDigestFlushTask();
         registerDashboard();
 
@@ -88,7 +87,11 @@ public class DiscordUtils extends JavaPlugin {
             }
         }
 
-        getLogger().info("DiscordUtils enabled.");
+        if (dbService != null) {
+            getLogger().info("DiscordUtils enabled (SwagAPI integration active).");
+        } else {
+            getLogger().info("DiscordUtils enabled (standalone mode - SwagAPI not found).");
+        }
     }
 
     @Override
@@ -113,10 +116,22 @@ public class DiscordUtils extends JavaPlugin {
     }
 
     /**
-     * Hooks SwagAPI's shared services. IDatabaseService is a hard requirement — the
-     * link database has no functionality without it. IEventBusService is used for
-     * the discordutils:notify inbound channel and the account_linked/account_unlinked
-     * outbound events; DiscordUtils still runs without it, just without those.
+     * Hooks SwagAPI's shared services, if SwagAPI is installed. SwagAPI is a SOFT
+     * dependency — DiscordUtils is a standalone Discord webhook/bot relay plugin at its
+     * core (chat, join/leave, deaths, AFK, auction house, staff chat, punishments-via-
+     * BanList all use vanilla Bukkit + JDA/webhooks only, see {@link DiscordBot} and the
+     * listeners package) and must boot and run those features fine with neither SwagAPI
+     * nor SwagCore present. Every call site that consumes {@link #dbService},
+     * {@link #busService}, or {@link #webService} null-checks first and degrades the
+     * SwagAPI-only feature (account linking, cross-plugin event-bus notices, the web
+     * dashboard) rather than throwing.
+     *
+     * <p>IDatabaseService backs the Discord account-link table — without it, the link
+     * system simply doesn't start (see {@link #setupLinkSystem()}) and
+     * {@code /discordlink} tells the player it isn't configured, exactly like the existing
+     * "no client-id configured" path already does. IEventBusService is used for the
+     * discordutils:notify inbound channel and the account_linked/account_unlinked
+     * outbound events; DiscordUtils still runs without it, just without those.</p>
      *
      * <p>IWebService is hooked here too, but ONLY for the admin dashboard
      * ({@code registerDashboard()}) — every module registered with it is gated behind
@@ -128,17 +143,25 @@ public class DiscordUtils extends JavaPlugin {
      * LinkHttpServer stays its own standalone HttpServer for that reason and does not use
      * this IWebService hook.</p>
      */
-    private boolean hookSwagAPI() {
+    private void hookSwagAPI() {
+        if (getServer().getPluginManager().getPlugin("SwagAPI") == null) {
+            getLogger().info("SwagAPI not found — running standalone. Account linking "
+                    + "(/discordlink), SwagAPI event-bus notices, and the web dashboard will be "
+                    + "unavailable; Discord chat/join-leave/death/AFK/webhook relay is unaffected.");
+            return;
+        }
+
         org.bukkit.plugin.ServicesManager sm = getServer().getServicesManager();
 
         org.bukkit.plugin.RegisteredServiceProvider<com.SwagDev.SwagAPI.api.IDatabaseService> dbProv =
                 sm.getRegistration(com.SwagDev.SwagAPI.api.IDatabaseService.class);
-        if (dbProv == null) {
-            getLogger().severe("SwagAPI IDatabaseService not found! Is SwagAPI loaded? Disabling.");
-            return false;
+        if (dbProv != null) {
+            dbService = dbProv.getProvider();
+            getLogger().info("Hooked SwagAPI IDatabaseService.");
+        } else {
+            getLogger().warning("SwagAPI is installed but IDatabaseService is not registered yet — "
+                    + "account linking will be unavailable this session.");
         }
-        dbService = dbProv.getProvider();
-        getLogger().info("Hooked SwagAPI IDatabaseService.");
 
         org.bukkit.plugin.RegisteredServiceProvider<com.SwagDev.SwagAPI.api.IEventBusService> busProv =
                 sm.getRegistration(com.SwagDev.SwagAPI.api.IEventBusService.class);
@@ -153,8 +176,6 @@ public class DiscordUtils extends JavaPlugin {
             webService = webProv.getProvider();
             getLogger().info("Hooked SwagAPI IWebService.");
         }
-
-        return true;
     }
 
     /**
@@ -249,6 +270,48 @@ public class DiscordUtils extends JavaPlugin {
         getLogger().info("Subscribed to discordutils:notify event-bus channel.");
     }
 
+    /**
+     * Subscribes to SwagCore's swagcore:player_punished event-bus channel (published from
+     * ModerationModule#punish) so bans/mutes/warns/kicks issued through SwagCore's own
+     * DB-backed moderation system still reach Discord. SwagCore's punishments never touch
+     * vanilla Bukkit's BanList, so {@link com.swag.discordutils.listeners.PunishmentsListener}'s
+     * PlayerKickEvent-based detection alone would silently miss all of them — this is the
+     * fix for that gap. Soft-dependency compliant: no-ops if SwagAPI's event bus isn't present.
+     */
+    private void subscribeSwagCorePunishments() {
+        if (busService == null) return;
+
+        busService.subscribe("swagcore:player_punished", event -> {
+            java.util.Map<String, Object> data = event.getData();
+            java.util.UUID targetUuid = event.getPlayerUuid();
+            if (targetUuid == null) return;
+
+            String type = data.get("type") instanceof String s ? s : "BAN";
+            String reason = data.get("reason") instanceof String s ? s : null;
+            long durationSeconds = data.get("duration") instanceof Number n ? n.longValue() : 0L;
+
+            String targetName = java.util.Optional.ofNullable(getServer().getOfflinePlayer(targetUuid).getName())
+                    .orElse(targetUuid.toString());
+
+            String staffName = "Console";
+            if (data.get("staff") instanceof String staffStr) {
+                try {
+                    java.util.UUID staffUuid = java.util.UUID.fromString(staffStr);
+                    if (!staffUuid.equals(new java.util.UUID(0, 0))) {
+                        staffName = java.util.Optional.ofNullable(getServer().getOfflinePlayer(staffUuid).getName())
+                                .orElse(staffStr);
+                    }
+                } catch (IllegalArgumentException ignored) {
+                    // Not a UUID (shouldn't happen — ModerationModule always sends staffUuid.toString()) — fall back to Console.
+                }
+            }
+
+            discordBot.sendPunishmentEmbed(targetName, targetUuid, reason, staffName, type, durationSeconds);
+        }, this);
+
+        getLogger().info("Subscribed to swagcore:player_punished event-bus channel.");
+    }
+
     private boolean isDigestEnabled(String webhookName) {
         if (webhookName == null) return false;
         return getConfig().getStringList("digest.enabled-webhooks").contains(webhookName);
@@ -326,6 +389,15 @@ public class DiscordUtils extends JavaPlugin {
     }
 
     private void setupLinkSystem() {
+        if (dbService == null) {
+            // SwagAPI not present (or its IDatabaseService didn't register) — the link
+            // table has nowhere to live. linkManager stays null; DiscordLinkCommand and
+            // DiscordUnlinkCommand already null-check it and tell the player it isn't
+            // configured, same UX as the "no client-id configured" path below.
+            getLogger().info("SwagAPI database not available - /discordlink will be unavailable.");
+            return;
+        }
+
         String clientId = getConfig().getString("link.client-id", "");
         if (clientId.isEmpty() || clientId.equals("YOUR_CLIENT_ID_HERE")) {
             getLogger().info("link.client-id not configured - /discordlink will be unavailable.");
@@ -565,6 +637,7 @@ public class DiscordUtils extends JavaPlugin {
         return linkManager;
     }
 
+    /** Returns the SwagAPI database service, or null if SwagAPI is not installed/hooked. */
     public com.SwagDev.SwagAPI.api.IDatabaseService getDbService() {
         return dbService;
     }

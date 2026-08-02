@@ -563,7 +563,9 @@ public class DiscordBot {
     }
 
     /**
-     * Sends a punishment embed when a player is banned.
+     * Sends a punishment embed when a player is banned via vanilla Bukkit's BanList
+     * (see {@link com.swag.discordutils.listeners.PunishmentsListener}). Kept as its own
+     * overload so that existing call site doesn't need to know about punishment types.
      *
      * @param playerName   the banned player's name
      * @param playerUuid   the banned player's UUID
@@ -572,22 +574,55 @@ public class DiscordBot {
      */
     public void sendPunishmentEmbed(String playerName, java.util.UUID playerUuid,
                                     String reason, String bannedBy) {
+        sendPunishmentEmbed(playerName, playerUuid, reason, bannedBy, "BAN", -1);
+    }
+
+    /**
+     * Sends a punishment embed for any punishment type. Used both by the vanilla-BanList
+     * path above (always "BAN") and by {@code DiscordUtils#subscribeSwagCorePunishments()}
+     * for punishments issued through SwagCore's own DB-backed moderation system, which never
+     * touches vanilla Bukkit's BanList — without this, SwagCore-issued bans/mutes/warns/kicks
+     * would be invisible to Discord once a server migrates off CMI/Essentials onto SwagCore.
+     *
+     * @param type            one of SwagCore's {@code Punishment.Type} names (WARN/MUTE/KICK/BAN/TEMPBAN),
+     *                        or "BAN" for the vanilla-BanList path
+     * @param durationSeconds punishment duration in seconds, or -1 if permanent/not applicable
+     */
+    public void sendPunishmentEmbed(String playerName, java.util.UUID playerUuid,
+                                    String reason, String bannedBy, String type, long durationSeconds) {
         if (!plugin.getConfig().getBoolean("punishments.enabled", false)) return;
 
         String safeReason  = (reason   != null && !reason.isEmpty())   ? reason   : "No reason provided";
         String safeBannedBy = (bannedBy != null && !bannedBy.isEmpty()) ? bannedBy : "Unknown";
         String headUrl = "https://mc-heads.net/avatar/" + playerUuid + "/64";
 
+        String title = switch (type == null ? "BAN" : type) {
+            case "MUTE", "TEMPMUTE" -> ":mute: Player Muted";
+            case "KICK" -> ":boot: Player Kicked";
+            case "WARN" -> ":warning: Player Warned";
+            default -> durationSeconds > 0 ? ":hammer: Player Temp-Banned" : ":hammer: Player Banned";
+        };
+        int colorInt = switch (type == null ? "BAN" : type) {
+            case "MUTE", "TEMPMUTE" -> 0xF0B232;
+            case "KICK" -> 0xF5A623;
+            case "WARN" -> 0xFEE75C;
+            default -> 0xED4245;
+        };
+        String byLabel = "BAN".equals(type) || "TEMPBAN".equals(type) ? "Banned By" : "Staff";
+        String duration = durationSeconds > 0 ? formatDuration(durationSeconds) : "Permanent";
+
         if (hasWebhook("punishments")) {
-            webhookSender.send(webhookUrl("punishments"), new WebhookSender.Embed()
-                    .title(":hammer: Player Banned")
-                    .color(0xED4245)
+            WebhookSender.Embed embed = new WebhookSender.Embed()
+                    .title(title)
+                    .color(colorInt)
                     .thumbnailUrl(headUrl)
                     .field("Player", playerName, true)
                     .field("UUID", playerUuid.toString(), false)
                     .field("Reason", safeReason, false)
-                    .field("Banned By", safeBannedBy, true)
-                    .timestamp(java.time.Instant.now()));
+                    .field(byLabel, safeBannedBy, true)
+                    .timestamp(java.time.Instant.now());
+            if (durationSeconds > 0) embed.field("Duration", duration, true);
+            webhookSender.send(webhookUrl("punishments"), embed);
             return;
         }
 
@@ -600,21 +635,33 @@ public class DiscordBot {
         TextChannel channel = getTextChannel(serverNumber, channelId);
         if (channel == null) return;
 
-        var embed = new CleanEmbedBuilder()
-                .setTitle(":hammer: Player Banned")
-                .setColor(new Color(0xED, 0x42, 0x45))
+        var embedBuilder = new CleanEmbedBuilder()
+                .setTitle(title)
+                .setColor(new Color((colorInt >> 16) & 0xFF, (colorInt >> 8) & 0xFF, colorInt & 0xFF))
                 .setThumbnail(headUrl)
                 .addField("Player", playerName, true)
                 .addField("UUID", playerUuid.toString(), false)
                 .addField("Reason", safeReason, false)
-                .addField("Banned By", safeBannedBy, true)
-                .setTimestamp(java.time.Instant.now())
-                .build();
+                .addField(byLabel, safeBannedBy, true)
+                .setTimestamp(java.time.Instant.now());
+        if (durationSeconds > 0) embedBuilder.addField("Duration", duration, true);
+        var embed = embedBuilder.build();
 
         channel.sendMessageEmbeds(embed).queue(
                 null,
                 err -> plugin.getLogger().warning("Failed to send punishment embed: " + err.getMessage())
         );
+    }
+
+    private static String formatDuration(long seconds) {
+        long days = seconds / 86400;
+        long hours = (seconds % 86400) / 3600;
+        long minutes = (seconds % 3600) / 60;
+        StringBuilder sb = new StringBuilder();
+        if (days > 0) sb.append(days).append("d ");
+        if (hours > 0) sb.append(hours).append("h ");
+        if (minutes > 0 || sb.isEmpty()) sb.append(minutes).append("m");
+        return sb.toString().trim();
     }
 
     public JDA getJda() {
