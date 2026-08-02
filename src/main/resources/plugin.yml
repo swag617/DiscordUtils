@@ -1,5 +1,5 @@
 name: DiscordUtils
-version: 1.4.0
+version: 1.4.1
 main: com.swag.discordutils.DiscordUtils
 api-version: 1.20
 description: Discord bridge plugin - webhook and bot-based chat/notification relay for the Swag617 ecosystem.
