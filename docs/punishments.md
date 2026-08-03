@@ -1,12 +1,15 @@
 # Punishment Logging
 
-The punishment logging feature posts a red embed to a Discord channel whenever a player is banned from the server.
+The punishment logging feature posts a colored embed to a Discord channel whenever a player is punished. There are two independent sources:
+
+1. **Vanilla Bukkit BanList** — no extra plugin required. DiscordUtils hooks into Bukkit's built-in `BanList` API, which is populated by the vanilla `/ban` command and any plugin that calls the Bukkit BanList internally. This path always reports type `BAN`.
+2. **SwagCore's moderation system** (optional) — if SwagAPI/SwagCore is installed, DiscordUtils subscribes to SwagCore's `swagcore:player_punished` event-bus channel and also reports warns, mutes, kicks, and temp-bans issued through SwagCore's own DB-backed moderation, none of which touch the vanilla BanList and would otherwise be invisible to Discord.
 
 ---
 
 ## Requirements
 
-No extra plugin is required. DiscordUtils hooks into Bukkit's built-in `BanList` API, which is populated by the vanilla `/ban` command and any plugin that calls the Bukkit BanList internally.
+The vanilla BanList path needs no extra plugin. The SwagCore path needs SwagAPI installed (soft dependency) with SwagCore publishing to its event bus; DiscordUtils no-ops this integration if SwagAPI's event bus service isn't present.
 
 ---
 
@@ -29,26 +32,36 @@ punishments:
 
 ## Embed contents
 
-Each ban embed includes the following fields:
+Each punishment embed includes the following fields:
 
 | Field | Description |
 |---|---|
-| Player name | The in-game username of the banned player. |
+| Player name | The in-game username of the punished player. |
 | UUID | The player's UUID. |
-| Reason | The ban reason as recorded in Bukkit's BanList. |
-| Banned by | The source of the ban (operator name, plugin name, or `"Server"`). |
-| Timestamp | The date and time the ban was applied. |
-| Thumbnail | The player's head rendered via the Crafatar API. |
+| Reason | The punishment reason, or "No reason provided". |
+| Staff / Banned By | The source of the punishment (operator name, `"Console"`, or plugin name). Labeled "Banned By" for BAN/TEMPBAN, "Staff" otherwise. |
+| Duration | Shown only for timed punishments (e.g. TEMPBAN, TEMPMUTE); omitted for permanent ones. |
+| Timestamp | The date and time the punishment was applied. |
+| Thumbnail | The player's head rendered via the mc-heads.net API. |
 
-The embed is colored red to make it visually distinct from informational embeds.
+The embed title and color vary by punishment type:
+
+| Type | Title | Color |
+|---|---|---|
+| BAN / TEMPBAN | Player Banned / Player Temp-Banned | Red |
+| MUTE / TEMPMUTE | Player Muted | Orange |
+| KICK | Player Kicked | Orange |
+| WARN | Player Warned | Yellow |
+
+Vanilla BanList bans always report as type `BAN`; the other types (WARN/MUTE/KICK/TEMPBAN) only occur via the SwagCore event-bus integration described above.
 
 ---
 
 ## Limitations
 
-- Only bans that go through Bukkit's `BanList` API are captured. Third-party punishment plugins that maintain their own database (e.g. LiteBans, AdvancedBan) are **not supported** unless they also call Bukkit's BanList alongside their own storage.
-- Mutes, kicks, and temporary bans that bypass the Bukkit BanList are not logged.
-- If the bot is not connected when a ban occurs, the embed is silently dropped.
+- Only bans that go through Bukkit's `BanList` API are captured on the vanilla path. Third-party punishment plugins that maintain their own database (e.g. LiteBans, AdvancedBan) are **not supported** on that path unless they also call Bukkit's BanList alongside their own storage.
+- Mutes, kicks, warns, and temporary bans are only logged if issued through SwagCore's moderation system (requires SwagAPI). Without SwagAPI installed, only vanilla BanList bans are logged.
+- If the bot is not connected and no webhook is configured, the embed is silently dropped.
 
 ---
 

@@ -6,7 +6,7 @@ Account linking connects a player's Minecraft UUID to their Discord user ID. Onc
 
 ## What linking does
 
-- Stores a persistent UUID↔Discord ID mapping in a local SQLite database (`plugins/DiscordUtils/links.db`).
+- Stores a persistent UUID↔Discord ID mapping in a `links` table on **SwagAPI's shared database** (via `IDatabaseService`) — DiscordUtils no longer owns its own connection pool or SQLite file for this data.
 - Assigns the Discord role whose name matches the player's primary LuckPerms group.
 - Removes any other managed rank roles from the player when updating (only one rank role is held at a time).
 - Re-syncs the Discord role every time the player joins the server.
@@ -18,9 +18,10 @@ The link system only initializes if `link.client-id` is set to a non-placeholder
 
 ## Prerequisites
 
-1. A Discord application with OAuth2 configured (same application as your bot, or a separate one).
-2. Port `4567` (or your chosen port) open and reachable from the internet on your server machine.
-3. Vault + LuckPerms installed (the plugin reads the player's primary group via Vault's Chat API).
+1. **SwagAPI installed and enabled.** DiscordUtils treats SwagAPI as an optional (soft) dependency and runs fine without it, but account linking specifically needs SwagAPI's shared `IDatabaseService` to store the link table — if SwagAPI isn't found (or hasn't registered its database service yet), the link system does not start and `/discordlink` tells the player it isn't configured.
+2. A Discord application with OAuth2 configured (same application as your bot, or a separate one).
+3. Port `4567` (or your chosen port) open and reachable from the internet on your server machine.
+4. Vault + LuckPerms installed (the plugin reads the player's primary group via Vault's Chat API).
 
 ---
 

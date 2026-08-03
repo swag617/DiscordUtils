@@ -44,6 +44,7 @@ Save your changes.
 1. Place `DiscordUtils.jar` in your server's `plugins/` directory.
 2. Ensure **Vault** and **LuckPerms** (or another Vault-compatible Chat provider) are also installed.
 3. Optional: install **CMI** for AFK detection, or **zAuctionHouse** for auction logging.
+4. Optional: install **SwagAPI**. DiscordUtils treats SwagAPI as a *soft* dependency — it boots and runs standalone (chat bridge, join/leave, deaths, AFK, auction house, staff chat, webhook relay, and BanList-based ban embeds) with neither SwagAPI nor SwagCore present. Installing SwagAPI unlocks three extra features: account linking (`/discordlink`), the `discordutils:notify` and `swagcore:player_punished` event-bus integrations, and the web dashboard. See [Account Linking](account-linking.md) for details.
 
 ---
 
@@ -124,7 +125,16 @@ Start the server and check the console. A successful connection looks like:
 
 ```
 [DiscordUtils] Vault Chat hooked - rank prefixes enabled.
+[DiscordUtils] Hooked SwagAPI IDatabaseService.
 [DiscordUtils] DiscordUtils bot connected as: YourBotName#0000
+[DiscordUtils] DiscordUtils enabled (SwagAPI integration active).
+```
+
+If SwagAPI is not installed, DiscordUtils still enables normally and instead logs:
+
+```
+[DiscordUtils] SwagAPI not found — running standalone. Account linking (/discordlink), SwagAPI event-bus notices, and the web dashboard will be unavailable; Discord chat/join-leave/death/AFK/webhook relay is unaffected.
+[DiscordUtils] DiscordUtils enabled (standalone mode - SwagAPI not found).
 ```
 
 If the bot token is wrong or the intents are not enabled, you will see an error in the console instead.

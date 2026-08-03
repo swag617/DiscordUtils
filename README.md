@@ -57,10 +57,11 @@ See [docs/setup.md](docs/setup.md) for a full walkthrough.
 |---|---|---|
 | Java 21 | Yes | |
 | Paper / Spigot 1.20+ | Yes | |
-| Vault | Yes | Provides rank prefixes and group lookup |
-| LuckPerms | Yes | Vault's Chat provider; other permission plugins may work |
+| Vault | No | Provides rank prefixes and group lookup; runs without it |
+| LuckPerms | No | Vault's Chat provider; other permission plugins may work |
 | CMI | No | AFK detection uses native CMI events when present |
 | zAuctionHouse | No | Auction House logging only activates if detected |
+| SwagAPI | No | Soft dependency. Unlocks account linking (`/discordlink`), the `discordutils:notify` / `swagcore:player_punished` event-bus integrations, and the web dashboard. DiscordUtils boots and runs standalone (chat/join-leave/deaths/AFK/auction/staff-chat/webhook relay) without it. |
 
 ---
 
