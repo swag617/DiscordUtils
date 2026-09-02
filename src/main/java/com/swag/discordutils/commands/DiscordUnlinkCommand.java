@@ -1,6 +1,7 @@
 package com.swag.discordutils.commands;
 
 import com.swag.discordutils.DiscordUtils;
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -27,16 +28,24 @@ public class DiscordUnlinkCommand implements CommandExecutor {
             return true;
         }
 
-        if (!lm.isLinked(player.getUniqueId())) {
-            player.sendMessage("§eYour account is not linked to any Discord account.");
-            return true;
-        }
+        // lm.isLinked()/unlink() hit the SwagAPI-backed database — never block the main
+        // thread on DB I/O, so resolve the unlink off-thread and hop back to send messages.
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            if (!lm.isLinked(player.getUniqueId())) {
+                Bukkit.getScheduler().runTask(plugin, () ->
+                        player.sendMessage("§eYour account is not linked to any Discord account."));
+                return;
+            }
 
-        if (lm.unlink(player.getUniqueId())) {
-            player.sendMessage("§aYour Discord account has been unlinked. Your rank role has been removed.");
-        } else {
-            player.sendMessage("§cSomething went wrong while unlinking. Please contact an admin.");
-        }
+            boolean success = lm.unlink(player.getUniqueId());
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (success) {
+                    player.sendMessage("§aYour Discord account has been unlinked. Your rank role has been removed.");
+                } else {
+                    player.sendMessage("§cSomething went wrong while unlinking. Please contact an admin.");
+                }
+            });
+        });
         return true;
     }
 }

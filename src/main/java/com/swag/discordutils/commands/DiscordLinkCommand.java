@@ -7,6 +7,7 @@ import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -34,24 +35,31 @@ public class DiscordLinkCommand implements CommandExecutor {
             return true;
         }
 
-        if (lm.isLinked(player.getUniqueId())) {
-            player.sendMessage(ChatColor.YELLOW + "Your Minecraft account is already linked to a Discord account.");
-            return true;
-        }
+        // lm.isLinked()/startLink() hit the SwagAPI-backed database — never block the main
+        // thread on DB I/O, so resolve the link state off-thread and hop back to send messages.
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            if (lm.isLinked(player.getUniqueId())) {
+                Bukkit.getScheduler().runTask(plugin, () ->
+                        player.sendMessage(ChatColor.YELLOW + "Your Minecraft account is already linked to a Discord account."));
+                return;
+            }
 
-        LinkManager.LinkStart start = lm.startLink(player.getUniqueId());
+            LinkManager.LinkStart start = lm.startLink(player.getUniqueId());
 
-        // Line 1: clickable link
-        TextComponent header = new TextComponent(ChatColor.GRAY + "[" + ChatColor.AQUA + "Discord Link" + ChatColor.GRAY + "] ");
-        TextComponent clickLink = new TextComponent(ChatColor.GREEN + "" + ChatColor.BOLD + "Click here to link your Discord account");
-        clickLink.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, start.oauthUrl()));
-        clickLink.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                new ComponentBuilder(ChatColor.GRAY + "Opens the Discord authorization page in your browser").create()));
-        player.spigot().sendMessage(header, clickLink);
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                // Line 1: clickable link
+                TextComponent header = new TextComponent(ChatColor.GRAY + "[" + ChatColor.AQUA + "Discord Link" + ChatColor.GRAY + "] ");
+                TextComponent clickLink = new TextComponent(ChatColor.GREEN + "" + ChatColor.BOLD + "Click here to link your Discord account");
+                clickLink.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, start.oauthUrl()));
+                clickLink.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                        new ComponentBuilder(ChatColor.GRAY + "Opens the Discord authorization page in your browser").create()));
+                player.spigot().sendMessage(header, clickLink);
 
-        // Line 2: backup DM code
-        player.sendMessage(ChatColor.GRAY + "Can't click? DM the bot this code: " + ChatColor.YELLOW + "" + ChatColor.BOLD + start.code());
-        player.sendMessage(ChatColor.DARK_GRAY + "This code expires in 10 minutes.");
+                // Line 2: backup DM code
+                player.sendMessage(ChatColor.GRAY + "Can't click? DM the bot this code: " + ChatColor.YELLOW + "" + ChatColor.BOLD + start.code());
+                player.sendMessage(ChatColor.DARK_GRAY + "This code expires in 10 minutes.");
+            });
+        });
 
         return true;
     }

@@ -260,7 +260,7 @@ public class LinkManager {
             return;
         }
 
-        String group = getPlayerGroup(playerUuid);
+        String group = getPlayerGroupSync(playerUuid);
         if (group == null) return;
 
         // Exact match first, fuzzy fallback so "Mod" still finds "Moderator"
@@ -295,6 +295,24 @@ public class LinkManager {
                     err -> plugin.getLogger().warning("Failed to modify Discord roles: " + err.getMessage())
             );
         }, err -> plugin.getLogger().warning("Failed to retrieve Discord member " + discordUserId + ": " + err.getMessage()));
+    }
+
+    /**
+     * Runs {@link #getPlayerGroup} on the main thread and blocks the calling thread for the
+     * result. {@code assignRoleAsync} is only ever invoked off the main thread (the JDA
+     * gateway thread pool via {@link #completeLinkDM}, the raw {@link LinkHttpServer} HTTP
+     * thread via {@link #completeLinkOAuth2}, and an explicit Bukkit async task via
+     * {@link #syncRoleAsync}) — {@code getPlayerGroup} itself touches {@code Bukkit.getPlayer}
+     * and Vault's {@code Chat}, which are not safe to call off the main thread, so the lookup
+     * is hopped over via {@link org.bukkit.scheduler.BukkitScheduler#callSyncMethod}.
+     */
+    private String getPlayerGroupSync(UUID playerUuid) {
+        try {
+            return Bukkit.getScheduler().callSyncMethod(plugin, () -> getPlayerGroup(playerUuid)).get();
+        } catch (Exception e) {
+            plugin.getLogger().warning("Failed to resolve player group for " + playerUuid + ": " + e.getMessage());
+            return null;
+        }
     }
 
     private String getPlayerGroup(UUID playerUuid) {

@@ -46,7 +46,7 @@ permissions:
     description: Allows use of MiniMessage/hex formatting in chat.
     default: true
   discordutils.staffchat:
-    description: Allows use of /sc and /staffchat, and receive in-game staff Discord messages.
+    description: Allows in-game staff chat messages to relay to/from Discord (via StaffChat/broadcast-prefix detection, not a dedicated command).
     default: op
   discordutils.discord:
     description: Allows use of /discord command.
