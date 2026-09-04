@@ -14,10 +14,13 @@ public class LinkDatabase {
         this.dbService = dbService;
         try (Connection conn = dbService.getConnection();
              Statement stmt = conn.createStatement()) {
+            // VARCHAR(191), not TEXT: MySQL rejects a BLOB/TEXT column used in a key
+            // (PRIMARY KEY or UNIQUE) without an explicit length - a no-op for SQLite,
+            // which doesn't enforce VARCHAR length.
             stmt.execute(
                 "CREATE TABLE IF NOT EXISTS links (" +
-                "  uuid TEXT PRIMARY KEY, " +
-                "  discord_id TEXT NOT NULL UNIQUE" +
+                "  uuid VARCHAR(191) PRIMARY KEY, " +
+                "  discord_id VARCHAR(191) NOT NULL UNIQUE" +
                 ")"
             );
         }
@@ -30,7 +33,9 @@ public class LinkDatabase {
     public synchronized void link(UUID uuid, String discordId) throws SQLException {
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(
-                "INSERT OR REPLACE INTO links (uuid, discord_id) VALUES (?, ?)")) {
+                dbService.isMySQL()
+                        ? "INSERT INTO links (uuid, discord_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE discord_id = VALUES(discord_id)"
+                        : "INSERT OR REPLACE INTO links (uuid, discord_id) VALUES (?, ?)")) {
             ps.setString(1, uuid.toString());
             ps.setString(2, discordId);
             ps.executeUpdate();
